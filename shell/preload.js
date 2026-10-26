@@ -1,0 +1,33 @@
+'use strict';
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('junr', {
+  getState: () => ipcRenderer.invoke('get-state'),
+  onState: (cb) => ipcRenderer.on('state', (e, s) => cb(s)),
+  onFocusAddress: (cb) => ipcRenderer.on('focus-address', () => cb()),
+  switchSpace: (id) => ipcRenderer.invoke('switch-space', id),
+  selectTab: (id) => ipcRenderer.invoke('select-tab', id),
+  closeTab: (id) => ipcRenderer.invoke('close-tab', id),
+  newTab: () => ipcRenderer.invoke('new-tab'),
+  navigate: (input) => ipcRenderer.invoke('navigate', input),
+  openSettings: (section) => ipcRenderer.invoke('open-settings', section),
+  addressInput: (text) => ipcRenderer.invoke('address-input', text),
+  pickSpace: () => ipcRenderer.invoke('pick-space'),
+  previousSpace: () => ipcRenderer.invoke('previous-space'),
+  nextSignal: () => ipcRenderer.invoke('next-signal'),
+  ackTab: (id) => ipcRenderer.invoke('ack-tab', id),
+  extAction: (id, x) => ipcRenderer.invoke('ext-action', id, x),
+  extContext: (id, x, y) => ipcRenderer.invoke('ext-context', id, x, y),
+  resumeOpen: (id) => ipcRenderer.invoke('resume-open', id),
+  editNext: () => ipcRenderer.invoke('edit-next'),
+  toggleVitrine: () => ipcRenderer.invoke('toggle-vitrine'),
+  fillPassword: () => ipcRenderer.invoke('fill-password'),
+  flyoutOpen: (kind, rect, keyboard) => ipcRenderer.invoke('flyout-open', kind, rect, !!keyboard),
+  platform: process.platform,
+  flyoutLeave: (kind) => ipcRenderer.invoke('flyout-leave', kind),
+  selectGroup: (spaceId, groupId) => ipcRenderer.invoke('select-group', spaceId, groupId),
+  createGroup: (spaceId) => ipcRenderer.invoke('create-group', spaceId),
+  assignTab: (tabId, groupId) => ipcRenderer.invoke('assign-tab', tabId, groupId),
+  groupMenu: (spaceId, groupId) => ipcRenderer.invoke('group-menu', spaceId, groupId),
+  tabMenu: (tabId) => ipcRenderer.invoke('tab-menu', tabId),
+});

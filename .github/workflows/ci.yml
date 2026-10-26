@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Échoue seulement si la version d'Electron est vulnérable ; un simple retard est signalé sans bloquer.
+      - run: npm run check:electron -- --vuln-only
+      - run: npm test
+      # L'installeur doit pouvoir se construire (dossier seul, plus rapide qu'un installeur complet).
+      - run: npm run dist:dir
+
+  # Montée de version d'Electron (Chromium) par Dependabot : fusion automatique quand tout est vert, sauf nouvelle version majeure,
+  # puis publication d'une version (release.yml). Les autres dépendances restent à relire.
+  automerge:
+    needs: test
+    if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fusionner et publier
+        if: steps.meta.outputs.dependency-names == 'electron' && steps.meta.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr merge "$PR_URL" --squash
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref master -f bump=patch

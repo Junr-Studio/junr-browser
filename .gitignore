@@ -1,0 +1,16 @@
+node_modules/
+dist/
+phase0-work/
+*.junrshare
+
+.env
+.env.*
+*.log
+*.pem
+*.pfx
+relay-data/
+
+# Pistes de design et captures d'écran de travail : pas dans le dépôt public
+docs/design/
+docs/shots/
+docs/.ux-spec.json

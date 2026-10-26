@@ -1,0 +1,59 @@
+{
+  "name": "junr-browser",
+  "version": "0.2.0",
+  "description": "Navigateur multi-clients Junr : espaces étanches, outils communs, extensions du Web Store, mise en veille, partage d'espace",
+  "author": "Junr Studio",
+  "homepage": "https://github.com/Junr-Studio/junr-browser",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:root": "electron . --no-sandbox",
+    "test": "node test/run.js",
+    "check:electron": "node scripts/check-electron.js",
+    "phase0:probe": "node scripts/run.js scripts/phase0-probe.js",
+    "phase0": "node scripts/run.js scripts/phase0.js",
+    "phase0:persistence": "node scripts/phase0-persistence.js",
+    "measure:ram": "node scripts/run.js scripts/measure-ram.js",
+    "dist": "electron-builder --win --publish never",
+    "dist:dir": "electron-builder --win --dir --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "build": {
+    "appId": "studio.junr.browser",
+    "productName": "Junr Browser",
+    "artifactName": "Junr-Browser-Setup-${version}.${ext}",
+    "directories": { "output": "dist" },
+    "asar": false,
+    "files": [
+      "main.js",
+      "config.json",
+      "package.json",
+      "src/**/*",
+      "shell/**/*",
+      "extensions/**/*",
+      "!**/*.md",
+      "!**/*.map"
+    ],
+    "publish": [
+      { "provider": "github", "owner": "Junr-Studio", "repo": "junr-browser", "releaseType": "prerelease" }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

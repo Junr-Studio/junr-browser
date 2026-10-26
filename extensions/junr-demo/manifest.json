@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Extension démo Junr",
+  "version": "1.0.0",
+  "description": "Marque les pages pour vérifier que l'extension agit dans chaque espace client.",
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

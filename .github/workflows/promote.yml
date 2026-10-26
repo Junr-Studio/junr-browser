@@ -1,0 +1,46 @@
+name: Promote
+
+# Passe en version stable la dernière pré-version publiée, une fois qu'elle a tenu assez de jours sans être retirée.
+# Pour bloquer une version : la supprimer, ou écrire [hold] dans sa description. Pour la promouvoir tout de suite : lancer ce workflow avec son tag.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag à promouvoir tout de suite (vide = automatique)
+        required: false
+      delay_days:
+        description: Jours d'attente avant promotion automatique
+        required: false
+        default: "3"
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Promouvoir
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          DELAY_DAYS: ${{ inputs.delay_days || '3' }}
+        run: |
+          if [ -n "$TAG" ]; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest
+            echo "Promue : $TAG"
+            exit 0
+          fi
+          newest=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 --json tagName,isPrerelease,isDraft,publishedAt \
+            --jq '[.[] | select(.isPrerelease and (.isDraft | not))] | sort_by(.publishedAt) | last // empty')
+          if [ -z "$newest" ]; then echo "Aucune pré-version en attente."; exit 0; fi
+          tag=$(echo "$newest" | jq -r .tagName)
+          published=$(echo "$newest" | jq -r .publishedAt)
+          age_days=$(( ( $(date +%s) - $(date -d "$published" +%s) ) / 86400 ))
+          body=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
+          if echo "$body" | grep -qi '\[hold\]'; then echo "$tag est bloquée ([hold])."; exit 0; fi
+          if [ "$age_days" -lt "$DELAY_DAYS" ]; then echo "$tag a $age_days jour(s) : on attend $DELAY_DAYS."; exit 0; fi
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest
+          echo "Promue : $tag ($age_days jours)"

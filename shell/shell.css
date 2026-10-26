@@ -1,0 +1,84 @@
+/* Barre unique du haut : client · onglets (icônes) · adresse · extensions. Elle sert aussi de barre de titre. */
+#bar {
+  position: fixed; left: 0; right: 0; top: 0; height: 46px; display: flex; align-items: center; gap: 6px; padding: 0 0 0 8px;
+  border-top: var(--frame) solid var(--accent);
+  background:
+    radial-gradient(60% 140% at 0% 0%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
+    var(--bar);
+  color: var(--side-text);
+  -webkit-app-region: drag;
+}
+body.commun #bar { border-top-color: #7b8794; background: linear-gradient(180deg, #1a2029, var(--bar)); }
+/* Seuls les contrôles sont cliquables ; le reste de la barre (espace libre, entre les onglets) déplace la fenêtre. */
+#bar button, #bar form, .tab, .sep { -webkit-app-region: no-drag; }
+#dragfill { flex: 1 1 0; min-width: 8px; align-self: stretch; }
+#bar button:focus-visible, .tab:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+/* Boutons du système (réduire, agrandir, fermer) : posés par-dessus la barre à droite ; macOS les met à gauche. */
+#caption-pad { flex: none; width: max(140px, calc(100vw - env(titlebar-area-width, 100vw) - env(titlebar-area-x, 0px))); }
+body.plat-darwin #bar { padding-left: 82px; }
+body.plat-darwin #caption-pad { width: 0; }
+
+/* Client : l'avatar seul ; le survol ouvre la liste des clients */
+.avatar { position: relative; flex: none; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 11px; background: none; cursor: pointer; display: grid; place-items: center; transition: background .12s; }
+.avatar:hover, .avatar.open { background: #ffffff1c; }
+.avatar #avatar-glyph { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent) 70%); box-shadow: inset 0 1px 0 #ffffff55, 0 1px 3px #0006; color: #fff; font-weight: 700; font-size: 11px; letter-spacing: .02em; text-shadow: 0 1px 1px #0005; }
+body.commun .avatar #avatar-glyph { background: repeating-linear-gradient(135deg, #6f7b89 0 4px, #94a0ae 4px 8px); font-size: 14px; }
+body.interne .avatar #avatar-glyph { background: #7d8a9b; }
+.avatar .badge { position: absolute; right: -4px; top: -5px; box-shadow: 0 0 0 2px var(--bar); }
+.chip { flex: none; max-width: 120px; height: 24px; padding: 0 10px; border: 1px solid var(--side-line); border-radius: 12px; background: #ffffff10; color: var(--side-text); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.chip[hidden] { display: none; }
+.chip:hover { background: #ffffff22; color: #fff; }
+
+/* Onglets : favicons seules ; le titre s'affiche au survol */
+#tabs { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 0 1 auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 4px 4px; }
+.tab { position: relative; flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 9px; background: none; cursor: pointer; transition: background .12s; }
+.tab:hover { background: #ffffff1c; }
+.tab.active { background: #ffffff26; box-shadow: inset 0 -2px 0 var(--accent); }
+.tab.sleeping .fav { opacity: .68; filter: grayscale(.4); }
+.tab.sleeping:hover .fav, .tab.sleeping.active .fav { opacity: 1; filter: none; }
+.tab .mk { position: absolute; left: -1px; bottom: -1px; font-size: 9px; line-height: 1; color: #fff; background: var(--bar); border-radius: 5px; padding: 1px 2px; }
+.tab .mk.warn { left: auto; right: -1px; color: var(--warn); }
+.tab .badge { position: absolute; right: -3px; top: -3px; min-width: 15px; height: 15px; line-height: 15px; font-size: 9.5px; padding: 0 4px; background: var(--accent); color: #fff; box-shadow: 0 0 0 2px var(--bar); }
+.tab .close { position: absolute; right: -4px; top: -4px; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 8px; background: #2a3646; color: #fff; font-size: 11px; line-height: 14px; cursor: pointer; opacity: 0; transition: opacity .1s; box-shadow: 0 0 0 2px var(--bar); }
+.tab:hover .close, .tab:focus-within .close { opacity: 1; }
+.tab .close:hover { background: #c0392b; }
+.tab.global { background: repeating-linear-gradient(135deg, #7b879426 0 5px, transparent 5px 10px); }
+.tab.global.active { background: #ffffff26; }
+.sep { flex: none; width: 1px; height: 16px; margin: 0 4px; background: var(--side-line); }
+#newtab { flex: none; width: 30px; height: 30px; border: 0; border-radius: 9px; background: none; color: var(--side-dim); font-size: 18px; cursor: pointer; transition: background .12s; }
+#newtab:hover { background: #ffffff1c; color: #fff; }
+
+/* Adresse : le domaine d'abord, le chemin discret (le vrai champ reste dessous pour la saisie) */
+#addressbar { position: relative; flex: 1 1 420px; min-width: 160px; max-width: 760px; display: flex; align-items: center; }
+#address { width: 100%; height: 32px; border: 1px solid transparent; border-radius: 10px; padding: 0 34px 0 12px; font: inherit; color: #fff; user-select: text; background: var(--field); transition: background .12s, box-shadow .12s; }
+#address:not(:focus) { color: transparent; }
+#address:hover { background: #ffffff1f; }
+#address:focus { outline: none; background: var(--surface); color: var(--ink); box-shadow: 0 0 0 2px var(--accent); }
+#address::placeholder { color: var(--side-dim); }
+#addrview { position: absolute; inset: 0 34px 0 12px; display: flex; align-items: center; pointer-events: none; overflow: hidden; white-space: nowrap; }
+#addressbar:focus-within #addrview, #addressbar:focus-within #notice { display: none; }
+#addrview .sch { color: var(--side-dim); }
+#addrview .host { font-weight: 650; color: #fff; }
+#addrview .rest { color: var(--side-dim); overflow: hidden; text-overflow: ellipsis; }
+#addrview .plain { color: #fff; }
+#notice { position: absolute; inset: 0 34px 0 0; display: flex; align-items: center; padding: 0 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 38%, #111a25); color: #fff; font-size: 12.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+#notice[hidden] { display: none; }
+#vitrine-pill { position: absolute; z-index: 1; left: 6px; top: 6px; height: 20px; padding: 0 8px; border-radius: 10px; background: var(--warn); color: #1b2430; font-size: 11px; font-weight: 700; line-height: 20px; pointer-events: none; }
+#vitrine-pill[hidden] { display: none; }
+#vitrine-pill:not([hidden]) ~ #address { padding-left: 82px; }
+#vitrine-pill:not([hidden]) ~ #addrview { left: 82px; }
+#vitrine-pill:not([hidden]) ~ #notice { padding-left: 82px; }
+#fill { position: absolute; right: 4px; width: 26px; height: 26px; border: 0; border-radius: 7px; background: none; cursor: pointer; padding: 0; font-size: 13px; opacity: .75; }
+#fill:hover { background: #ffffff22; opacity: 1; }
+#addressbar:focus-within #fill:hover { background: #0000001a; }
+
+/* Extensions : boutons épinglés, puis le menu qui les liste toutes */
+#exts { display: flex; gap: 2px; flex: none; }
+.extbtn, #extmenu { flex: none; width: 32px; height: 32px; border: 0; border-radius: 9px; background: none; cursor: pointer; padding: 0; color: var(--side-dim); display: grid; place-items: center; transition: background .12s; }
+.extbtn:hover, #extmenu:hover, #extmenu.open { background: #ffffff1c; color: #fff; }
+.extbtn img { width: 20px; height: 20px; object-fit: contain; }
+
+#empty { position: fixed; left: 0; right: 0; top: 46px; bottom: 0; display: none; align-items: center; justify-content: center; flex-direction: column; color: #8492a5; background: #18202a; }
+#empty.show { display: flex; }
+#empty p { margin: 4px 0; }
+body { background: #18202a; }

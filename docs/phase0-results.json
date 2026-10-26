@@ -1,0 +1,1637 @@
+{
+  "summary": {
+    "generatedAt": "2026-10-25T19:23:24.419Z",
+    "electron": "45.0.0",
+    "chrome": "156.0.8078.48",
+    "corpus": 24,
+    "installed": 24,
+    "notInstalled": 0,
+    "fonctionne": 23,
+    "fonctionNative": 0,
+    "degradee": 0,
+    "aVerifier": 1,
+    "neFonctionnePas": 0,
+    "percentOk": 95.8,
+    "threshold": 99,
+    "thresholdMet": false,
+    "runtimeOkCount": 24,
+    "percentRuntimeOk": 100,
+    "shim": true
+  },
+  "results": [
+    {
+      "id": "ddkjiahejlhfcafbddmgiahcphecmpfh",
+      "name": "uBlock Origin Lite",
+      "families": [
+        "Réseau (declarativeNetRequest)",
+        "MV3"
+      ],
+      "role": "bloqueur de publicités",
+      "installed": true,
+      "storeName": "uBlock Origin Lite",
+      "version": "2026.1021.1354",
+      "manifestVersion": 3,
+      "permissions": [
+        "activeTab",
+        "alarms",
+        "declarativeNetRequest",
+        "offscreen",
+        "scripting",
+        "storage",
+        "unlimitedStorage",
+        "userScripts"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 105,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "gighmmpiobklfepjocnamgkkbiglidom",
+      "name": "AdBlock",
+      "families": [
+        "Réseau (webRequest, declarativeNetRequest)"
+      ],
+      "role": "bloqueur de publicités",
+      "installed": true,
+      "storeName": "AdBlock — block ads across the web",
+      "version": "6.50.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "alarms",
+        "contextMenus",
+        "declarativeNetRequestWithHostAccess",
+        "idle",
+        "notifications",
+        "scripting",
+        "storage",
+        "tabs",
+        "unlimitedStorage",
+        "webNavigation",
+        "webRequest"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "optionalPermissions": [
+        "management"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [
+          "API devtools non mesurée (non observable depuis un service worker)"
+        ],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 192,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [
+        "Error: [ipm]: No remote configuration.",
+        "Error: [ipm]: No remote configuration."
+      ],
+      "swErrorCount": 2,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "nngceckbapebfimnlniiiahkandclblb",
+      "name": "Bitwarden",
+      "families": [
+        "Stockage et identité",
+        "Messagerie native",
+        "MV3 : offscreen, alarms"
+      ],
+      "role": "gestionnaire de mots de passe",
+      "installed": true,
+      "storeName": "Bitwarden Password Manager",
+      "version": "2026.10.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "activeTab",
+        "alarms",
+        "clipboardRead",
+        "clipboardWrite",
+        "contextMenus",
+        "idle",
+        "offscreen",
+        "scripting",
+        "sidePanel",
+        "storage",
+        "tabs",
+        "unlimitedStorage",
+        "webNavigation",
+        "webRequest",
+        "webRequestAuthProvider",
+        "notifications"
+      ],
+      "hostPermissions": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "optionalPermissions": [
+        "nativeMessaging",
+        "privacy"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 191,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [
+        "Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.",
+        "Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist."
+      ],
+      "swErrorCount": 2,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "aeblfdkhhhdcdjpifhhbdiojplfjncoa",
+      "name": "1Password",
+      "families": [
+        "Stockage et identité",
+        "Messagerie native"
+      ],
+      "role": "gestionnaire de mots de passe lié à une application de bureau",
+      "installed": true,
+      "storeName": "1Password – Password Manager",
+      "version": "8.12.42.36",
+      "manifestVersion": 3,
+      "permissions": [
+        "alarms",
+        "contextMenus",
+        "downloads",
+        "idle",
+        "management",
+        "nativeMessaging",
+        "notifications",
+        "privacy",
+        "scripting",
+        "storage",
+        "tabs",
+        "webNavigation",
+        "webRequest",
+        "webRequestAuthProvider",
+        "declarativeNetRequestWithHostAccess"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 0,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [
+        "Uncaught (in promise) Error: WASM is not initialized, unable to make core call."
+      ],
+      "swErrorCount": 1,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "hdokiejnpimakedhajhdlcegeplioahd",
+      "name": "LastPass",
+      "families": [
+        "Stockage et identité",
+        "Cookies"
+      ],
+      "role": "gestionnaire de mots de passe",
+      "installed": true,
+      "storeName": "LastPass: Free Password Manager",
+      "version": "4.156.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "scripting",
+        "tabs",
+        "notifications",
+        "contextMenus",
+        "storage",
+        "unlimitedStorage",
+        "webNavigation",
+        "webRequest",
+        "webRequestAuthProvider",
+        "offscreen",
+        "alarms",
+        "cookies",
+        "declarativeNetRequest"
+      ],
+      "hostPermissions": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "optionalPermissions": [
+        "privacy",
+        "clipboardWrite"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [
+          "clipboardWrite"
+        ],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 105,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "fdjamakpfbbddfjaooikfcpapjohcfmg",
+      "name": "Dashlane",
+      "families": [
+        "Stockage et identité",
+        "Interface"
+      ],
+      "role": "gestionnaire de mots de passe",
+      "installed": true,
+      "storeName": "Dashlane — Password Manager",
+      "version": "6.2643.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "contextMenus",
+        "cookies",
+        "idle",
+        "privacy",
+        "storage",
+        "tabs",
+        "unlimitedStorage",
+        "scripting",
+        "webRequest",
+        "declarativeNetRequest",
+        "webRequestAuthProvider",
+        "alarms"
+      ],
+      "hostPermissions": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "optionalPermissions": [
+        "downloads"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 199,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [
+        "[background/framework] Error while processing incoming carbon-legacy.carbon command (id: 0.9604873292206327) TypeError: a is not a function",
+        "[background/amphora] a is not a function [object Object]",
+        "[background/framework] Error while processing incoming carbon-legacy.carbon command (id: 0.4492427854458736) TypeError: a is not a function",
+        "[background/amphora] a is not a function [object Object]"
+      ],
+      "swErrorCount": 4,
+      "runtimeOk": false,
+      "verdict": "a-verifier",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "eimadpbcbfnmbkopoojfekhnkhdbieeh",
+      "name": "Dark Reader",
+      "families": [
+        "Content scripts et scripting",
+        "MV3"
+      ],
+      "role": "mode sombre",
+      "installed": true,
+      "storeName": "Dark Reader",
+      "version": "4.9.133",
+      "manifestVersion": 3,
+      "permissions": [
+        "alarms",
+        "fontSettings",
+        "scripting",
+        "storage"
+      ],
+      "hostPermissions": [
+        "*://*/*"
+      ],
+      "optionalPermissions": [
+        "contextMenus"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": true,
+        "b": true
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 1358,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "dhdgffkkebhmkfjojejmpbldmpobfkfo",
+      "name": "Tampermonkey",
+      "families": [
+        "Content scripts et scripting",
+        "Réseau (webRequest)"
+      ],
+      "role": "scripts utilisateur",
+      "installed": true,
+      "storeName": "Tampermonkey",
+      "version": "5.5.1",
+      "manifestVersion": 3,
+      "permissions": [
+        "notifications",
+        "unlimitedStorage",
+        "tabs",
+        "idle",
+        "webNavigation",
+        "webRequest",
+        "webRequestBlocking",
+        "storage",
+        "contextMenus",
+        "chrome://favicon/",
+        "clipboardWrite",
+        "cookies",
+        "alarms",
+        "declarativeNetRequestWithHostAccess",
+        "scripting",
+        "userScripts",
+        "offscreen"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "optionalPermissions": [
+        "downloads"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 241,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "dbepggeogbaibhgnhhndojpepiihcmeb",
+      "name": "Vimium",
+      "families": [
+        "Interface (commands)",
+        "Onglets et fenêtres"
+      ],
+      "role": "navigation clavier",
+      "installed": true,
+      "storeName": "Vimium",
+      "version": "2.4.2",
+      "manifestVersion": 3,
+      "permissions": [
+        "tabs",
+        "bookmarks",
+        "history",
+        "storage",
+        "sessions",
+        "notifications",
+        "scripting",
+        "favicon",
+        "webNavigation",
+        "search"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 144,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "edacconmaakjimmfgnblocblbcdcpbko",
+      "name": "Session Buddy",
+      "families": [
+        "Onglets et fenêtres"
+      ],
+      "role": "gestionnaire de sessions",
+      "installed": true,
+      "storeName": "Session Buddy - Tab & Bookmark Manager",
+      "version": "4.1.2",
+      "manifestVersion": 3,
+      "permissions": [
+        "tabs",
+        "unlimitedStorage",
+        "storage",
+        "alarms"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": false,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "chphlpgkkbolifaimnlloiipkdnihall",
+      "name": "OneTab",
+      "families": [
+        "Onglets et fenêtres",
+        "Stockage"
+      ],
+      "role": "gestionnaire d'onglets",
+      "installed": true,
+      "storeName": "OneTab",
+      "version": "2.24",
+      "manifestVersion": 3,
+      "permissions": [
+        "favicon",
+        "unlimitedStorage",
+        "storage",
+        "tabs",
+        "activeTab",
+        "scripting",
+        "contextMenus"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [
+        "readingList",
+        "tabGroups",
+        "bookmarks"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [
+          "readingList",
+          "tabGroups"
+        ],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 0,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "hlkenndednhfkekhgcdicdfddnkalmdm",
+      "name": "Cookie-Editor",
+      "families": [
+        "Cookies"
+      ],
+      "role": "gestionnaire de cookies",
+      "installed": true,
+      "storeName": "Cookie-Editor",
+      "version": "1.13.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "cookies",
+        "tabs",
+        "storage",
+        "sidePanel"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [
+          "API devtools non mesurée (non observable depuis un service worker)"
+        ],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 237,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "fmkadmapgofadopljbjfkapdkoienihi",
+      "name": "React Developer Tools",
+      "families": [
+        "Outils développeur"
+      ],
+      "role": "débogage",
+      "installed": true,
+      "storeName": "React Developer Tools",
+      "version": "8.0.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "scripting",
+        "storage",
+        "tabs"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "optionalPermissions": [
+        "clipboardWrite"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [
+          "clipboardWrite"
+        ],
+        "notes": [
+          "API devtools non mesurée (non observable depuis un service worker)"
+        ],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 105,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "lmhkpmbekcpmknklioeibfkpmmfibljd",
+      "name": "Redux DevTools",
+      "families": [
+        "Outils développeur"
+      ],
+      "role": "débogage",
+      "installed": true,
+      "storeName": "Redux DevTools",
+      "version": "3.2.12",
+      "manifestVersion": 3,
+      "permissions": [
+        "notifications",
+        "contextMenus",
+        "storage"
+      ],
+      "hostPermissions": [
+        "file:///*",
+        "http://*/*",
+        "https://*/*"
+      ],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [
+          "API devtools non mesurée (non observable depuis un service worker)"
+        ],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 53,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "fdpohaocaechififmbbbbbknoalclacl",
+      "name": "GoFullPage",
+      "families": [
+        "Capture et fichiers"
+      ],
+      "role": "capture d'écran",
+      "installed": true,
+      "storeName": "GoFullPage - Full Page Screen Capture",
+      "version": "8.10",
+      "manifestVersion": 3,
+      "permissions": [
+        "activeTab",
+        "scripting",
+        "storage",
+        "unlimitedStorage"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [
+        "downloads",
+        "tabs",
+        "webNavigation"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 381,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "liecbddmkiiihnedobmlmillhodjkdmb",
+      "name": "Loom",
+      "families": [
+        "Capture et fichiers (tabCapture, desktopCapture)"
+      ],
+      "role": "enregistrement d'écran",
+      "installed": true,
+      "storeName": "Loom – Screen Recorder & Screen Capture",
+      "version": "5.5.214",
+      "manifestVersion": 3,
+      "permissions": [
+        "system.memory",
+        "activeTab",
+        "alarms",
+        "contextMenus",
+        "cookies",
+        "desktopCapture",
+        "scripting",
+        "storage",
+        "system.cpu",
+        "system.display",
+        "tabCapture",
+        "webNavigation",
+        "webRequest"
+      ],
+      "hostPermissions": [
+        "<all_urls>",
+        "*://.loom.com/"
+      ],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": true,
+        "b": true
+      },
+      "popup": {
+        "opened": false,
+        "error": "Cannot read properties of undefined (reading 'on')",
+        "errorCount": 0,
+        "consoleErrors": []
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "mciiogijehkdemklbdcbfkefimifhecn",
+      "name": "Chrono Download Manager",
+      "families": [
+        "Capture et fichiers (downloads)"
+      ],
+      "role": "gestionnaire de téléchargements",
+      "installed": true,
+      "storeName": "Chrono Download Manager",
+      "version": "0.13.12",
+      "manifestVersion": 3,
+      "permissions": [
+        "alarms",
+        "clipboardRead",
+        "clipboardWrite",
+        "contextMenus",
+        "downloads",
+        "downloads.open",
+        "downloads.ui",
+        "notifications",
+        "offscreen",
+        "scripting",
+        "storage",
+        "tabs",
+        "webRequest",
+        "unlimitedStorage"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 65,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "ldgfbffkinooeloadekpmfoklnobpien",
+      "name": "Raindrop.io",
+      "families": [
+        "Historique et favoris",
+        "Interface"
+      ],
+      "role": "gestionnaire de favoris",
+      "installed": true,
+      "storeName": "Raindrop.io",
+      "version": "6.8.2",
+      "manifestVersion": 3,
+      "permissions": [
+        "contextMenus",
+        "activeTab",
+        "scripting",
+        "storage",
+        "sidePanel"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [
+        "tabs"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 85,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [
+        "Uncaught (in promise) Error: URL invalide : /welcome/index.html",
+        "Uncaught (in promise) Error: URL invalide : /welcome/index.html"
+      ],
+      "swErrorCount": 2,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "knheggckgoiihginacbkhaalnibhilkk",
+      "name": "Notion Web Clipper",
+      "families": [
+        "Stockage et identité (identity)",
+        "Interface (contextMenus)"
+      ],
+      "role": "prise de notes",
+      "installed": true,
+      "storeName": "Notion Web Clipper",
+      "version": "0.2.20",
+      "manifestVersion": 3,
+      "permissions": [
+        "activeTab",
+        "storage",
+        "cookies",
+        "scripting"
+      ],
+      "hostPermissions": [
+        "https://*.notion.so/*",
+        "https://*.notion.so/",
+        "https://*.notion.com/*",
+        "https://*.notion.com/"
+      ],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 0,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "aapbdbdomjkkjkaonfhkkikfgjllcleb",
+      "name": "Google Traduction",
+      "families": [
+        "Interface (contextMenus, action)"
+      ],
+      "role": "assistant",
+      "installed": true,
+      "storeName": "Google Translate",
+      "version": "2.0.18",
+      "manifestVersion": 3,
+      "permissions": [
+        "activeTab",
+        "contextMenus",
+        "storage",
+        "offscreen",
+        "scripting"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 112,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [
+        "Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist."
+      ],
+      "swErrorCount": 1,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "kbfnbcaeplbcioakkpcpgfkobkghlhen",
+      "name": "Grammarly",
+      "families": [
+        "Content scripts et scripting",
+        "Stockage et identité"
+      ],
+      "role": "assistant d'écriture",
+      "installed": true,
+      "storeName": "Grammarly: AI Writing Assistant and Grammar Checker App",
+      "version": "14.1341.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "scripting",
+        "sidePanel",
+        "tabs",
+        "notifications",
+        "cookies",
+        "identity",
+        "storage"
+      ],
+      "hostPermissions": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "optionalPermissions": [
+        "nativeMessaging",
+        "clipboardRead"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [
+          "clipboardRead"
+        ],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": true
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 344,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [
+        "grm ERROR [extension-api.managed-storage.chrome] ░░ Could not get \"GrammarlyExtensionMode\" [object Object]",
+        "grm ERROR [extension-api.managed-storage.chrome] ░░ Could not get \"GrammarlyExtensionMode\" [object Object]",
+        "grm ERROR [extension-api.managed-storage.chrome] ░░ Could not get \"GrammarlyEnrollmentToken\" [object Object]",
+        "grm ERROR [extension-api.managed-storage.chrome] ░░ Could not get \"GrammarlyEnrollmentToken\" [object Object]",
+        "grm ERROR [Cookies] ░░ failed to read a CSRFToken cookie [object Object]"
+      ],
+      "swErrorCount": 20,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "gppongmhjkpfnbhagpmjfkannfbllamg",
+      "name": "Wappalyzer",
+      "families": [
+        "Réseau (webRequest)",
+        "Onglets (webNavigation)"
+      ],
+      "role": "analyse de sites",
+      "installed": true,
+      "storeName": "Wappalyzer - Technology profiler",
+      "version": "6.12.7",
+      "manifestVersion": 3,
+      "permissions": [
+        "cookies",
+        "storage",
+        "tabs",
+        "webRequest"
+      ],
+      "hostPermissions": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "optionalPermissions": [
+        "downloads"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": true,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": true,
+        "b": false
+      },
+      "popup": {
+        "opened": true,
+        "textLength": 252,
+        "consoleErrors": [],
+        "errorCount": 0
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "chklaanhfefbnpoihckbnefhakgolnmc",
+      "name": "JSONVue",
+      "families": [
+        "Content scripts et scripting"
+      ],
+      "role": "affichage JSON",
+      "installed": true,
+      "storeName": "JSONVue",
+      "version": "0.2.3",
+      "manifestVersion": 3,
+      "permissions": [
+        "contextMenus",
+        "storage"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [],
+      "hasServiceWorker": true,
+      "hasPopup": false,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [],
+        "notes": [],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "swErrors": [],
+      "swErrorCount": 0,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    },
+    {
+      "id": "laookkfknpbbblfpciffpaejjkokdgca",
+      "name": "Momentum",
+      "families": [
+        "Interface (chrome_url_overrides)"
+      ],
+      "role": "page de nouvel onglet",
+      "installed": true,
+      "storeName": "Momentum",
+      "version": "2.27.9",
+      "manifestVersion": 3,
+      "permissions": [
+        "offscreen",
+        "unlimitedStorage",
+        "idle"
+      ],
+      "hostPermissions": [],
+      "optionalPermissions": [
+        "bookmarks",
+        "tabs",
+        "sessions",
+        "topSites",
+        "favicon",
+        "scripting",
+        "alarms",
+        "notifications",
+        "tabGroups",
+        "search"
+      ],
+      "hasServiceWorker": true,
+      "hasPopup": false,
+      "loadError": null,
+      "compat": {
+        "status": "compatible",
+        "missing": [],
+        "optionalMissing": [
+          "favicon",
+          "tabGroups"
+        ],
+        "notes": [
+          "Pages de remplacement (nouvel onglet, favoris) non appliquées"
+        ],
+        "suggestions": []
+      },
+      "loadedIn": {
+        "a": true,
+        "b": true
+      },
+      "background": {
+        "a": true,
+        "b": true
+      },
+      "pageEffect": {
+        "a": false,
+        "b": false
+      },
+      "swErrors": [
+        "Uncaught (in promise) Error: URL invalide : index.html",
+        "Uncaught (in promise) Error: URL invalide : index.html"
+      ],
+      "swErrorCount": 2,
+      "runtimeOk": true,
+      "verdict": "fonctionne",
+      "verdictWhy": {
+        "hardMissing": [],
+        "nativeReplaceable": [],
+        "secondaryMissing": [],
+        "runtimeBroken": false
+      }
+    }
+  ]
+}

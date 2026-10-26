@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'">
+<link rel="stylesheet" href="dialog.css">
+</head>
+<body>
+  <div id="backdrop">
+    <div id="box" role="dialog" aria-modal="true" aria-labelledby="title">
+      <h2 id="title"></h2>
+      <p id="message"></p>
+      <input id="filter" type="text" placeholder="Chercher un client…" spellcheck="false">
+      <input id="text" type="text" spellcheck="true" maxlength="2000">
+      <label id="linkbox"><input id="link" type="checkbox"><span id="linklabel"></span></label>
+      <ul id="items"></ul>
+      <p id="hint" class="muted"></p>
+      <div id="buttons"></div>
+    </div>
+  </div>
+  <script src="match.js"></script>
+  <script src="dialog.js"></script>
+</body>
+</html>

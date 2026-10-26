@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Junr API probe",
+  "version": "1.0.0",
+  "description": "Mesure les API chrome.* réellement exposées par Electron (utilisée par scripts/phase0-probe.js).",
+  "background": { "service_worker": "sw.js" },
+  "action": { "default_title": "probe" },
+  "commands": { "probe-cmd": { "suggested_key": { "default": "Ctrl+Shift+9" }, "description": "probe" } },
+  "omnibox": { "keyword": "probe" },
+  "side_panel": { "default_path": "panel.html" },
+  "host_permissions": ["http://127.0.0.1/*"],
+  "permissions": [
+    "activeTab", "alarms", "bookmarks", "browsingData", "clipboardRead", "clipboardWrite", "contentSettings", "contextMenus",
+    "cookies", "debugger", "declarativeContent", "declarativeNetRequest", "declarativeNetRequestFeedback", "desktopCapture",
+    "downloads", "fontSettings", "gcm", "history", "identity", "idle", "management", "nativeMessaging", "notifications",
+    "offscreen", "pageCapture", "power", "printerProvider", "privacy", "proxy", "readingList", "scripting", "search", "sessions",
+    "sidePanel", "storage", "system.cpu", "system.display", "system.memory", "system.storage", "tabCapture", "tabGroups", "tabs",
+    "topSites", "tts", "ttsEngine", "unlimitedStorage", "userScripts", "webNavigation", "webRequest", "webRequestBlocking", "dns"
+  ]
+}

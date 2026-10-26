@@ -1,0 +1,37 @@
+{
+  "unloadAfterMs": 300000,
+  "clients": [
+    {
+      "id": "acme",
+      "name": "Acme",
+      "color": "#d9534f",
+      "tools": [
+        { "name": "Diagnostic", "url": "{diag}" },
+        { "name": "Exemple", "url": "https://example.com" },
+        { "name": "IANA", "url": "https://www.iana.org" }
+      ]
+    },
+    {
+      "id": "globex",
+      "name": "Globex",
+      "color": "#2f8f83",
+      "tools": [
+        { "name": "Diagnostic", "url": "{diag}" },
+        { "name": "Exemple", "url": "https://example.org" }
+      ]
+    },
+    {
+      "id": "initech",
+      "name": "Initech",
+      "color": "#5b6fd6",
+      "tools": [
+        { "name": "Diagnostic", "url": "{diag}" },
+        { "name": "Wikipédia", "url": "https://www.wikipedia.org" }
+      ]
+    }
+  ],
+  "globalTools": [
+    { "name": "Diagnostic commun", "url": "{diag}?global" },
+    { "name": "DuckDuckGo", "url": "https://duckduckgo.com" }
+  ]
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src junr-icon:">
+<title>Junr Browser</title>
+<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+  <header id="bar">
+    <button id="avatar" class="avatar" aria-haspopup="true">
+      <span id="avatar-glyph">··</span><span id="avatar-badge" class="badge" hidden></span>
+    </button>
+    <button id="groupchip" class="chip" hidden></button>
+    <div id="tabs" role="tablist"></div>
+    <button id="newtab" title="Nouvel onglet (Ctrl+T)">+</button>
+    <div id="dragfill"></div>
+    <form id="addressbar">
+      <span id="vitrine-pill" hidden>Vitrine</span>
+      <input id="address" type="text" spellcheck="false" placeholder="Adresse ou recherche (Ctrl+L)">
+      <div id="addrview" aria-hidden="true"></div>
+      <div id="notice" aria-live="polite" hidden></div>
+      <button id="fill" type="button" title="Remplir avec un mot de passe enregistré dans Junr (Ctrl+Maj+L)">🔑</button>
+    </form>
+    <div id="exts"></div>
+    <button id="extmenu" aria-haspopup="true" aria-label="Extensions">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M10 3a2 2 0 0 1 4 0v2h4a1 1 0 0 1 1 1v4h-2a2 2 0 0 0 0 4h2v4a1 1 0 0 1-1 1h-4v-2a2 2 0 0 0-4 0v2H6a1 1 0 0 1-1-1v-4h2a2 2 0 0 0 0-4H5V6a1 1 0 0 1 1-1h4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </button>
+    <div id="caption-pad"></div>
+  </header>
+  <main id="empty">
+    <p id="empty-text">Aucun onglet ouvert pour ce client.</p>
+    <p id="empty-hint">Ctrl+T ouvre un onglet dans cet espace.</p>
+  </main>
+  <script src="common.js"></script>
+  <script src="shell.js"></script>
+</body>
+</html>

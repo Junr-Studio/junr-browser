@@ -1,0 +1,72 @@
+name: Release
+
+# Construit l'installeur Windows et le publie comme PRÉ-VERSION GitHub : les installations en canal « bêta » la reçoivent tout de suite,
+# promote.yml la passe en version stable après quelques jours sans retrait.
+#   - lancé à la main ou par ci.yml (montée d'Electron) : augmente la version, la commit, pose le tag vX.Y.Z ;
+#   - ou un tag vX.Y.Z poussé à la main (la version de package.json doit être la même).
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Quel numéro augmenter
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_type == 'tag' && github.ref || 'master' }}
+      - id: v
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version "$BUMP" -m "chore(release): v%s"
+          git push origin HEAD:master --follow-tags
+          echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: La version de package.json correspond au tag
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          [ "v$(node -p "require('./package.json').version")" = "$TAG" ] || { echo "package.json ne porte pas la version $TAG"; exit 1; }
+      - run: npm ci
+      - run: npm run check:electron -- --vuln-only
+      - run: npm test
+      - name: Construire et publier
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
