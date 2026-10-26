@@ -11,7 +11,7 @@ permissions:
 jobs:
   test:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,6 +22,8 @@ jobs:
       # Échoue seulement si la version d'Electron est vulnérable ; un simple retard est signalé sans bloquer.
       - run: npm run check:electron -- --vuln-only
       - run: npm test
+        env:
+          JUNR_TEST_TIMEOUT_MIN: 12
       # L'installeur doit pouvoir se construire (dossier seul, plus rapide qu'un installeur complet).
       - run: npm run dist:dir
 

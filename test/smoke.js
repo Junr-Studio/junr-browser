@@ -49,6 +49,13 @@ async function openIn(core, spaceId, url) {
 
 async function run(core) {
   const { state, tabs, spaces, extManager, sessions, session, dialog } = core;
+  // Garde-fou : un test bloqué (runner lent) échoue vite en disant où, au lieu d'attendre la fin du délai du job.
+  if (process.env.JUNR_TEST_TIMEOUT_MIN) {
+    setTimeout(() => {
+      console.log(`FAIL  Test bloqué : plus de ${process.env.JUNR_TEST_TIMEOUT_MIN} min. Dernière vérification : « ${results.length ? results[results.length - 1].name : 'aucune'} »`);
+      app.exit(1);
+    }, Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000).unref();
+  }
   const srv = await testServer.start();
   const only = process.env.JUNR_ONLY ? new RegExp(process.env.JUNR_ONLY, 'i') : null;
   let bx = null; // extension de test du pont d'API, installée par la première section qui en a besoin
@@ -1891,16 +1898,13 @@ async function run(core) {
     const devWc = state.tabs.get(state.activeTab)?.view?.webContents;
     if (devWc) {
       press0({ key: 'F12', code: 'F12' });
-      await wait(400);
-      check('F12 ouvre les outils de développement de l\'onglet actif', devWc.isDevToolsOpened());
+      check('F12 ouvre les outils de développement de l\'onglet actif', !!(await until(() => devWc.isDevToolsOpened(), 5000, 100)));
       press0({ key: 'F12', code: 'F12' });
-      await wait(300);
-      check('F12 les referme', !devWc.isDevToolsOpened());
+      check('F12 les referme', !!(await until(() => !devWc.isDevToolsOpened(), 5000, 100)));
       press0({ key: 'I', code: 'KeyI', control: true, shift: true });
-      await wait(400);
-      check('Ctrl+Maj+I les ouvre aussi', devWc.isDevToolsOpened());
+      check('Ctrl+Maj+I les ouvre aussi', !!(await until(() => devWc.isDevToolsOpened(), 5000, 100)));
       devWc.closeDevTools();
-      await wait(300);
+      await until(() => !devWc.isDevToolsOpened(), 3000, 100);
     } else skip('Outils de développement', 'aucun onglet actif à ce stade');
 
     // Volet des clients : une vue à part, collée sous la barre, jamais plein écran
