@@ -11,7 +11,7 @@ permissions:
 jobs:
   test:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,7 +23,8 @@ jobs:
       - run: npm run check:electron -- --vuln-only
       - run: npm test
         env:
-          JUNR_TEST_TIMEOUT_MIN: 12
+          JUNR_TEST_TIMEOUT_MIN: 8
+          JUNR_TEST_ATTEMPTS: 2
       # L'installeur doit pouvoir se construire (dossier seul, plus rapide qu'un installeur complet).
       - run: npm run dist:dir
 

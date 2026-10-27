@@ -13,5 +13,14 @@ if (process.platform === 'linux') {
 }
 const env = { ...process.env, JUNR_TEST: '1' };
 delete env.ELECTRON_RUN_AS_NODE;
-const r = spawnSync(cmd, args, { cwd: root, env, stdio: 'inherit' });
-process.exit(r.status ?? 1);
+// Garde-fou externe (JUNR_TEST_TIMEOUT_MIN) : si l'application ne répond plus du tout (blocage natif, le chien de garde interne ne
+// peut alors plus s'exécuter), elle est tuée. Seul un blocage est rejoué (JUNR_TEST_ATTEMPTS) : un échec de vérification ne l'est jamais.
+const timeoutMs = process.env.JUNR_TEST_TIMEOUT_MIN ? Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000 + 30000 : 0; // 30 s après le garde-fou interne
+const attempts = Math.max(1, Number(process.env.JUNR_TEST_ATTEMPTS || 1));
+for (let n = 1; n <= attempts; n++) {
+  const r = spawnSync(cmd, args, { cwd: root, env, stdio: 'inherit', ...(timeoutMs ? { timeout: timeoutMs, killSignal: 'SIGKILL' } : {}) });
+  if (!(r.error && r.error.code === 'ETIMEDOUT')) process.exit(r.status ?? 1);
+  console.log(`FAIL  Application bloquée : plus de ${Math.round(timeoutMs / 60000)} min sans fin (essai ${n}/${attempts})`);
+  if (process.env.CI && process.platform === 'win32') spawnSync('taskkill', ['/F', '/T', '/IM', 'electron.exe'], { stdio: 'ignore' });
+}
+process.exit(1);
