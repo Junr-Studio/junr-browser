@@ -23,8 +23,8 @@ jobs:
       - run: npm run check:electron -- --vuln-only
       - run: npm test
         env:
-          JUNR_TEST_TIMEOUT_MIN: 8
-          JUNR_TEST_ATTEMPTS: 2
+          JUNR_TEST_TIMEOUT_MIN: 5
+          JUNR_TEST_ATTEMPTS: 3
       # L'installeur doit pouvoir se construire (dossier seul, plus rapide qu'un installeur complet).
       - run: npm run dist:dir
 
