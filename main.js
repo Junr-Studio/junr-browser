@@ -12,6 +12,8 @@ app.userAgentFallback = app.userAgentFallback.replace(/ (Electron|junr-browser)\
 const MODE = process.env.JUNR_TEST ? 'test' : process.env.JUNR_SCRIPT ? 'script' : null;
 // JUNR_USER_DATA permet de relancer un mode automatique sur les mêmes données (tests de redémarrage).
 if (MODE) app.setPath('userData', process.env.JUNR_USER_DATA || fs.mkdtempSync(path.join(os.tmpdir(), 'junr-run-')));
+// Les runners d'intégration continue n'ont pas de GPU : le processus GPU y plante ou cale parfois et fige le processus principal.
+if (MODE === 'test' && process.env.CI) app.disableHardwareAcceleration();
 
 const { state, TOPBAR_H } = require('./src/state');
 const { Store } = require('./src/store');

@@ -55,6 +55,23 @@ async function run(core) {
       console.log(`FAIL  Test bloqué : plus de ${process.env.JUNR_TEST_TIMEOUT_MIN} min. Dernière vérification : « ${results.length ? results[results.length - 1].name : 'aucune'} »`);
       app.exit(1);
     }, Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000).unref();
+    // Diagnostic de blocage : si rien ne se passe pendant 45 s, dit si la boucle d'événements est bloquée (retard du minuteur)
+    // ou si une promesse n'aboutit jamais, et dans quel état sont les fenêtres et les vues.
+    let seen = 0, since = process.hrtime.bigint(), beat = process.hrtime.bigint();
+    const ms = (a) => Number((process.hrtime.bigint() - a) / 1000000n);
+    setInterval(() => {
+      const lag = ms(beat) - 1000; beat = process.hrtime.bigint();
+      if (lag > 3000) console.log(`DIAG  boucle d'événements bloquée pendant ${Math.round(lag / 1000)} s`);
+      if (results.length !== seen) { seen = results.length; since = process.hrtime.bigint(); return; }
+      if (ms(since) < 45000) return;
+      since = process.hrtime.bigint();
+      try {
+        const { webContents, BaseWindow } = require('electron');
+        const wins = BaseWindow.getAllWindows().map((w) => ({ min: w.isMinimized(), vis: w.isVisible(), b: w.getBounds() }));
+        const views = webContents.getAllWebContents().map((w) => ({ t: w.getType(), l: w.isLoading(), c: w.isCrashed(), u: String(w.getURL()).slice(0, 60) }));
+        console.log(`DIAG  aucune vérification depuis 45 s (après « ${results.length ? results[results.length - 1].name : 'aucune'} ») — fenêtres ${JSON.stringify(wins)} — vues ${JSON.stringify(views)}`);
+      } catch (e) { console.log('DIAG  état illisible : ' + e.message); }
+    }, 1000).unref();
   }
   const srv = await testServer.start();
   const only = process.env.JUNR_ONLY ? new RegExp(process.env.JUNR_ONLY, 'i') : null;
