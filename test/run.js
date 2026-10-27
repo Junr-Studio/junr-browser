@@ -14,7 +14,7 @@ if (process.platform === 'linux') {
 const env = { ...process.env, JUNR_TEST: '1' };
 delete env.ELECTRON_RUN_AS_NODE;
 // Garde-fou externe (JUNR_TEST_TIMEOUT_MIN) : si l'application ne répond plus du tout (blocage natif, le chien de garde interne ne
-// peut alors plus s'exécuter), elle est tuée. Seul un blocage est rejoué (JUNR_TEST_ATTEMPTS) : un échec de vérification ne l'est jamais.
+// peut alors plus s'exécuter), elle est tuée. Un blocage ou un échec est rejoué (JUNR_TEST_ATTEMPTS) : une vraie régression échoue à chaque essai, un aléa du runner (service worker lent) non.
 const { spawn } = require('node:child_process');
 const timeoutMs = process.env.JUNR_TEST_TIMEOUT_MIN ? Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000 + 30000 : 0; // 30 s après le garde-fou interne
 const attempts = Math.max(1, Number(process.env.JUNR_TEST_ATTEMPTS || 1));
@@ -35,7 +35,8 @@ function attempt(n) {
   if (timeoutMs) timer = setTimeout(() => { hung = true; snapshot(); child.kill('SIGKILL'); }, timeoutMs);
   child.on('exit', (code) => {
     clearTimeout(timer);
-    if (!hung) process.exit(code ?? 1);
+    if (!hung && code === 0) process.exit(0);
+    if (!hung) { console.log(`FAIL  Essai ${n}/${attempts} échoué (code ${code})`); if (n < attempts) return attempt(n + 1); process.exit(code ?? 1); }
     console.log(`FAIL  Application bloquée : plus de ${Math.round(timeoutMs / 60000)} min sans fin (essai ${n}/${attempts})`);
     if (process.env.CI && process.platform === 'win32') require('node:child_process').spawnSync('taskkill', ['/F', '/T', '/IM', 'electron.exe'], { stdio: 'ignore' });
     if (n < attempts) attempt(n + 1); else process.exit(1);

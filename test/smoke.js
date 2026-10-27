@@ -49,12 +49,23 @@ async function openIn(core, spaceId, url) {
 
 async function run(core) {
   const { state, tabs, spaces, extManager, sessions, session, dialog } = core;
+  // Une fenêtre réduite (par le système, un autre programme…) ne produit plus d'images : les captures d'onglet et d'écran n'aboutissent
+  // jamais et la suite reste bloquée. On la remet à l'écran dès qu'elle est réduite, en le signalant une fois.
+  let reduced = false;
+  const keepShown = () => {
+    const w = state.win;
+    if (!w || w.isDestroyed() || !w.isMinimized()) return;
+    if (!reduced) { reduced = true; console.log(`DIAG  fenêtre réduite pendant les tests (après « ${results.length ? results[results.length - 1].name : 'aucune'} ») : restaurée`); }
+    w.restore();
+  };
+  keepShown();
+  setInterval(keepShown, 500);
   // Garde-fou : un test bloqué (runner lent) échoue vite en disant où, au lieu d'attendre la fin du délai du job.
   if (process.env.JUNR_TEST_TIMEOUT_MIN) {
     setTimeout(() => {
       console.log(`FAIL  Test bloqué : plus de ${process.env.JUNR_TEST_TIMEOUT_MIN} min. Dernière vérification : « ${results.length ? results[results.length - 1].name : 'aucune'} »`);
       app.exit(1);
-    }, Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000).unref();
+    }, Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000); // pas de unref() : sans minuteur actif, la boucle de Node dans Electron ne se réveille pas pour lui
     // Diagnostic de blocage : si rien ne se passe pendant 45 s, dit si la boucle d'événements est bloquée (retard du minuteur)
     // ou si une promesse n'aboutit jamais, et dans quel état sont les fenêtres et les vues.
     let seen = 0, since = process.hrtime.bigint(), beat = process.hrtime.bigint();
@@ -71,7 +82,7 @@ async function run(core) {
         const views = webContents.getAllWebContents().map((w) => ({ t: w.getType(), l: w.isLoading(), c: w.isCrashed(), u: String(w.getURL()).slice(0, 60) }));
         console.log(`DIAG  aucune vérification depuis 45 s (après « ${results.length ? results[results.length - 1].name : 'aucune'} ») — fenêtres ${JSON.stringify(wins)} — vues ${JSON.stringify(views)}`);
       } catch (e) { console.log('DIAG  état illisible : ' + e.message); }
-    }, 1000).unref();
+    }, 1000);
   }
   const srv = await testServer.start();
   const only = process.env.JUNR_ONLY ? new RegExp(process.env.JUNR_ONLY, 'i') : null;
