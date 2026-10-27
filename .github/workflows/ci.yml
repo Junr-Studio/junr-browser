@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
 
 permissions:
@@ -50,4 +50,4 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           gh pr merge "$PR_URL" --squash
-          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref master -f bump=patch
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f bump=patch
