@@ -184,6 +184,20 @@ async function run(core) {
     check('Client supprimé relu depuis le disque', !new Store(state.store.file, {}).data.clients.some((x) => x.id === c.id));
   });
 
+  await section('Scripts de l\'interface', async () => {
+    // Une erreur de syntaxe dans un script de page le rend inerte sans rien afficher (volet vide) : on les compile tous.
+    const dir = path.join(__dirname, '..', 'shell');
+    const broken = fs.readdirSync(dir).filter((f) => f.endsWith('.js')).filter((f) => {
+      try { new (require('node:vm').Script)(fs.readFileSync(path.join(dir, f), 'utf8'), { filename: f }); return false; } catch { return true; }
+    });
+    check('Tous les scripts de shell/ se compilent', broken.length === 0, broken);
+    const flyout = require('../src/flyout');
+    await flyout.open('clients', { x: 8, right: 42 });
+    const filled = await until(() => flyout._view()?.webContents.executeJavaScript('document.getElementById("panel").children.length > 0').catch(() => false), 5000);
+    check('Le volet des clients affiche son contenu', !!filled);
+    flyout.close();
+  });
+
   await section('Sécurité des vues', async () => {
     await tabs.switchSpace('acme');
     const views = [state.shell, ...[...state.tabs.values()].filter((t) => t.view).map((t) => t.view)];
