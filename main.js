@@ -38,6 +38,8 @@ app.on('web-contents-created', (e, contents) => {
 if (!MODE && !app.requestSingleInstanceLock()) app.quit();
 
 function seedConfig(diagUrl) {
+  // Version installée : aucun client de démonstration, la personne crée les siens dans Réglages.
+  if (app.isPackaged) return { unloadAfterMs: 300000, clients: [], globalTools: [] };
   const raw = fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8');
   return JSON.parse(raw);
 }
