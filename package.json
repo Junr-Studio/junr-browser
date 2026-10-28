@@ -1,6 +1,6 @@
 {
   "name": "junr-browser",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Navigateur multi-clients Junr : espaces étanches, outils communs, extensions du Web Store, mise en veille, partage d'espace",
   "author": "Junr Studio",
   "homepage": "https://github.com/Junr-Studio/junr-browser",
@@ -30,7 +30,9 @@
     "appId": "studio.junr.browser",
     "productName": "Junr Browser",
     "artifactName": "Junr-Browser-Setup-${version}.${ext}",
-    "directories": { "output": "dist" },
+    "directories": {
+      "output": "dist"
+    },
     "asar": false,
     "files": [
       "main.js",
@@ -38,15 +40,28 @@
       "package.json",
       "src/**/*",
       "shell/**/*",
-      "extensions/**/*","!extensions/junr-demo/**",
+      "extensions/**/*",
+      "!extensions/junr-demo/**",
       "!**/*.md",
       "!**/*.map"
     ],
     "publish": [
-      { "provider": "github", "owner": "Junr-Studio", "repo": "junr-browser", "releaseType": "prerelease" }
+      {
+        "provider": "github",
+        "owner": "Junr-Studio",
+        "repo": "junr-browser",
+        "releaseType": "prerelease"
+      }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "signAndEditExecutable": false
     },
     "nsis": {
