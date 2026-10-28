@@ -38,7 +38,7 @@
       "package.json",
       "src/**/*",
       "shell/**/*",
-      "extensions/**/*",
+      "extensions/**/*","!extensions/junr-demo/**",
       "!**/*.md",
       "!**/*.map"
     ],

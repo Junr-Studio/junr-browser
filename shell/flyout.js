@@ -155,7 +155,7 @@ function renderClients(s, panel) {
   if (s.update) {
     const up = el('button', 'side-btn upd');
     up.append(el('span', '', `Mise à jour ${s.update.next} prête`), el('span', 'key', 'Redémarrer'));
-    up.title = 'Installe la nouvelle version et rouvre Junr Browser. Sinon, elle s'installe toute seule à la fermeture.';
+    up.title = 'Installe la nouvelle version et rouvre Junr Browser. Sinon, elle s\'installe toute seule à la fermeture.';
     up.onclick = () => act('update-install');
     foot.append(up);
   }

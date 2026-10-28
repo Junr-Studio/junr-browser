@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "code": [
+    "**/*.js"
+  ],
+  "prose": [
+    "**/*.md"
+  ],
+  "exempt": [
+    "**/node_modules/**",
+    "dist/**",
+    "package-lock.json",
+    "docs/phase0-report.md",
+    "docs/phase0-report-sans-pont.md",
+    "docs/ram-measure.md",
+    "docs/electron-api-surface.md",
+    "test/fixtures.js"
+  ],
+  "debugAllowed": [
+    "scripts/**",
+    "test/**",
+    "server/relay.js"
+  ],
+  "placeholders": {
+    "markers": [
+      "TODO",
+      "FIXME",
+      "XXX",
+      "HACK",
+      "WIP"
+    ],
+    "allowed": false
+  },
+  "lexicon": {
+    "banned": [
+      "—",
+      "delve",
+      "leverage",
+      "seamless",
+      "robust",
+      "comprehensive",
+      "cutting-edge",
+      "game-changer",
+      "unlock the power",
+      "in today's",
+      "it's worth noting",
+      "it is important to note",
+      "dive deep",
+      "en somme",
+      "force est de constater",
+      "à l'ère du",
+      "véritable atout"
+    ],
+    "allowed": []
+  },
+  "publishedText": {
+    "commit": true,
+    "pr": true
+  }
+}

@@ -66,6 +66,14 @@ jobs:
       - run: npm ci
       - run: npm run check:electron -- --vuln-only
       - run: npm test
+      # electron-builder envoie l'installeur et le .blockmap en parallèle, et chacun crée la Release s'il ne la trouve pas :
+      # on obtenait deux Releases pour un même tag. Elle existe donc avant l'envoi.
+      - name: Créer la pré-version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --title "$TAG" --notes ""
       - name: Construire et publier
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
