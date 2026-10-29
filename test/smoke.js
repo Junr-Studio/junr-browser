@@ -207,6 +207,13 @@ async function run(core) {
     check('Un faux domaine n\'est pas le Store', !store.isStoreUrl(`https://chromewebstore.google.com.exemple.fr/detail/x/${id}`) && !store.isStoreUrl(`http://chromewebstore.google.com/detail/x/${id}`));
   });
 
+  await section('Moteur de recherche', async () => {
+    const { SEARCH_URL, HOME_URL } = require('../src/state');
+    check('Le moteur de recherche est Google', SEARCH_URL === 'https://www.google.com/search?q=' && HOME_URL === 'https://www.google.com');
+    const src = ['tabs.js', 'contextmenu.js', 'extensions/bridge/api-misc.js', 'extensions/bridge/api-windows.js', 'extensions/bridge/model.js'].map((f) => fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8')).join('\n');
+    check('Aucun autre moteur de recherche en dur dans le code', !/duckduckgo|bing\.com|qwant|ecosia/i.test(src));
+  });
+
   await section('Sécurité des vues', async () => {
     await tabs.switchSpace('acme');
     const views = [state.shell, ...[...state.tabs.values()].filter((t) => t.view).map((t) => t.view)];
@@ -550,7 +557,7 @@ async function run(core) {
     check('Version de développement : pas de mise à jour automatique', (await updater.start()).state === 'off');
     await updater.start({ impl: fake });
     check('Source des versions : les Releases GitHub du dépôt', fake.feed.provider === 'github' && fake.feed.owner === pkg.build.publish[0].owner && fake.feed.repo === pkg.build.publish[0].repo, fake.feed);
-    check('Téléchargement en arrière-plan, installation à la fermeture, jamais de retour en arrière', fake.autoDownload === true && fake.autoInstallOnAppQuit === true && fake.allowDowngrade === false && fake.channel === 'latest');
+    check('Téléchargement en arrière-plan, installation à la fermeture, jamais de retour en arrière', fake.autoDownload === true && fake.autoInstallOnAppQuit === true && fake.allowDowngrade === false);
     check('Canal stable par défaut : pas de pré-versions', fake.allowPrerelease === false && state.store.data.settings.updateChannel === 'stable');
     check('Rien de prêt : la barre ne montre rien', tabs.snapshot().update === null);
 
@@ -579,6 +586,7 @@ async function run(core) {
 
     await updater.setChannel('beta');
     check('Canal bêta : les pré-versions sont proposées', fake.allowPrerelease === true && state.store.data.settings.updateChannel === 'beta');
+    check('Canal bêta : aucun canal explicite (sinon GitHub ne renvoie aucune version)', fake.channel == null, fake.channel);
     let bad = '';
     try { await updater.setChannel('nightly'); } catch (e) { bad = e.message; }
     check('Canal inconnu refusé', /Canal inconnu/.test(bad) && state.store.data.settings.updateChannel === 'beta', bad);
@@ -917,6 +925,10 @@ async function run(core) {
     await actions.click(restricted.id, 'acme');
     const ac = await until(async () => (await restricted.events('acme')).find((e) => e.name === 'action.onClicked'), 8000, 150);
     check('Icône sans popup : action.onClicked(tab)', ac?.args[0].id === activeTab.view.webContents.id);
+    await restricted.call('acme', 'action.setPopup', { popup: 'quick.html' });
+    check('action.setPopup : le popup posé à l\'exécution est celui de l\'extension', popup.pathFor(restricted.id) === 'quick.html' && (await restricted.call('acme', 'action.getPopup')) === 'quick.html');
+    await restricted.call('acme', 'action.setPopup', { popup: '' });
+    check('action.setPopup vide : plus de popup', popup.pathFor(restricted.id) === null);
 
     const wBefore = activeTab.view.getBounds().width;
     await x.call('acme', 'sidePanel.open', {});
@@ -1095,7 +1107,7 @@ async function run(core) {
     check('sessions.restore : onglet rouvert', restored.tab.url.endsWith('?ferme') && tabs.tabsOfSpace('acme').some((t) => t.view?.webContents.id === restored.tab.id));
     check('sessions.getDevices', (await x.call('acme', 'sessions.getDevices')).length === 0);
     await x.call('acme', 'search.query', { text: 'junr browser', disposition: 'NEW_TAB' });
-    check('search.query : ouvre la recherche dans un nouvel onglet', tabs.tabsOfSpace('acme').some((t) => (t.view?.webContents.getURL() || t.url).startsWith('https://duckduckgo.com/?q=junr%20browser')));
+    check('search.query : ouvre la recherche dans un nouvel onglet', tabs.tabsOfSpace('acme').some((t) => (t.view?.webContents.getURL() || t.url).startsWith('https://www.google.com/search?q=junr%20browser')));
 
     check('privacy : valeur par défaut', (await x.call('acme', 'privacy.settingGet', 'network.webRTCIPHandlingPolicy')).value === 'default');
     await x.listen('acme', 'privacy.network.webRTCIPHandlingPolicy.onChange'); await x.events('acme');
