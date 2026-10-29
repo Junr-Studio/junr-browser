@@ -36,9 +36,11 @@ function attempt(n) {
   child.on('exit', (code) => {
     clearTimeout(timer);
     if (!hung && code === 0) process.exit(0);
-    if (!hung) { console.log(`FAIL  Essai ${n}/${attempts} échoué (code ${code})`); if (n < attempts) return attempt(n + 1); process.exit(code ?? 1); }
+    // Des processus Electron restés après un échec bloquent l'essai suivant : on repart toujours d'un poste propre.
+    const sweep = () => { if (process.env.CI && process.platform === 'win32') require('node:child_process').spawnSync('taskkill', ['/F', '/T', '/IM', 'electron.exe'], { stdio: 'ignore' }); };
+    if (!hung) { console.log(`FAIL  Essai ${n}/${attempts} échoué (code ${code})`); sweep(); if (n < attempts) return attempt(n + 1); process.exit(code ?? 1); }
     console.log(`FAIL  Application bloquée : plus de ${Math.round(timeoutMs / 60000)} min sans fin (essai ${n}/${attempts})`);
-    if (process.env.CI && process.platform === 'win32') require('node:child_process').spawnSync('taskkill', ['/F', '/T', '/IM', 'electron.exe'], { stdio: 'ignore' });
+    sweep();
     if (n < attempts) attempt(n + 1); else process.exit(1);
   });
 }
