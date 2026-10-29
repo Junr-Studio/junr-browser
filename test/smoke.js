@@ -214,6 +214,37 @@ async function run(core) {
     check('Aucun autre moteur de recherche en dur dans le code', !/duckduckgo|bing\.com|qwant|ecosia/i.test(src));
   });
 
+  // Le shim s'exécute dans le service worker : on l'évalue ici avec un faux `chrome` et un faux pont, pour vérifier que le popup n'y
+  // est pas vu comme un onglet (Passbolt le reconnaît à l'absence de `sender.tab`) alors qu'un vrai onglet l'est toujours.
+  await section('Popup : expéditeur sans onglet', async () => {
+    const vm = require('node:vm');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'extensions', 'sw-shim.js'), 'utf8');
+    const listeners = { onConnect: new Set(), onMessage: new Set() };
+    const native = { runtime: { onConnect: { addListener: (f) => listeners.onConnect.add(f), removeListener: (f) => listeners.onConnect.delete(f) },
+      onMessage: { addListener: (f) => listeners.onMessage.add(f), removeListener: (f) => listeners.onMessage.delete(f) } } };
+    let push = null; const replies = [];
+    const bridge = { invoke: async (p, a) => { if (p === '$reply') replies.push(a); }, subscribe: async () => {}, unsubscribe: async () => {}, onEvent: (cb) => { push = cb; } };
+    const g = { chrome: native, location: { href: 'chrome-extension://abc/sw.js' }, console, setTimeout: () => 0, __junr: bridge, __JUNR_SPEC: { ns: { runtime: { methods: [], events: [] } }, unsupported: [] } };
+    g.globalThis = g;
+    vm.runInNewContext(src, g);
+    const seen = [];
+    g.chrome.runtime.onConnect.addListener((port) => seen.push(port.sender.tab ? port.sender.tab.id : null));
+    g.chrome.runtime.onMessage.addListener((m, sender) => { seen.push(sender.tab ? sender.tab.id : null); return true; });
+    push({ name: 'runtime.$popupTab', args: [7], replyId: 'r1' });
+    check('Le worker confirme avoir noté le popup', replies.length === 1 && replies[0][0] === 'r1' && replies[0][1] === true, replies);
+    for (const f of listeners.onConnect) f({ name: 'quickaccess', sender: { tab: { id: 7 }, url: 'chrome-extension://abc/popup.html' } });
+    for (const f of listeners.onConnect) f({ name: 'x', sender: { tab: { id: 8 } } });
+    let ret; for (const f of listeners.onMessage) ret = f('hi', { tab: { id: 7 } }, () => {});
+    for (const f of listeners.onMessage) f('hi', { tab: { id: 9 } }, () => {});
+    check('Connexion du popup : plus de sender.tab, comme dans Chrome', seen[0] === null, seen);
+    check('Connexion d\'un vrai onglet : sender.tab conservé', seen[1] === 8, seen);
+    check('Message du popup : plus de sender.tab, et le retour « réponse asynchrone » est conservé', seen[2] === null && ret === true, { seen, ret });
+    check('Message d\'un vrai onglet : sender.tab conservé', seen[3] === 9, seen);
+    const fn = () => {};
+    g.chrome.runtime.onConnect.addListener(fn);
+    check('hasListener / removeListener fonctionnent sur l\'événement enveloppé', g.chrome.runtime.onConnect.hasListener(fn) && (g.chrome.runtime.onConnect.removeListener(fn), !g.chrome.runtime.onConnect.hasListener(fn)));
+  });
+
   await section('Sécurité des vues', async () => {
     await tabs.switchSpace('acme');
     const views = [state.shell, ...[...state.tabs.values()].filter((t) => t.view).map((t) => t.view)];
@@ -423,8 +454,13 @@ async function run(core) {
     const popupWc = await until(() => state.win.contentView.children.map((c) => c.webContents).find((w) => w && w.getURL().startsWith(`chrome-extension://${id}/popup.html`)));
     const shownId = popupWc && await until(async () => (await popupWc.executeJavaScript(`document.getElementById('id').textContent`).catch(() => '')) || null);
     check('Popup de l\'extension ouvert, avec accès à chrome.runtime', opened && shownId === id, shownId);
+    const iconX = popup._view().getBounds().x;
     await popup.toggle(id, 900);
     check('Second clic ferme le popup', !popup.isOpen());
+    // chrome.action.openPopup() n'indique pas de position : le popup reprend celle de l'icône cliquée, sinon le bord droit de la fenêtre.
+    await popup.toggle(id, 0);
+    check('Popup ouvert par l\'extension : sous l\'icône, pas collé à gauche', popup.isOpen() && popup._view().getBounds().x === iconX && iconX > 0, { x: popup._view().getBounds().x, iconX });
+    await popup.toggle(id, 0);
 
     // Désactivation / réactivation.
     await extManager.setEnabled(id, false);

@@ -69,6 +69,11 @@
   /* ---------- Événements ---------- */
   const eventSets = new Map(); // « ns.nom » → Set<{ cb, filter }>
 
+  // Popups de l'extension : Électron leur donne un identifiant d'onglet, donc `sender.tab`, que Chrome ne renseigne jamais pour un popup.
+  // Le processus principal annonce l'identifiant avant que la page ne se connecte (événement interne avec réponse, sans abonnement).
+  const popupTabs = new Set();
+  if (!isPage) eventSets.set('runtime.$popupTab', new Set([{ cb: (tabId, send) => { popupTabs.add(tabId); send(true); } }]));
+
   function makeEvent(name) {
     const set = new Set();
     eventSets.set(name, set);
@@ -190,6 +195,21 @@
     for (const e of def.events) { if (!e.endsWith('.onChange') || !(def.settings || []).length) part[e] = makeEvent(`${ns}.${e}`); }
     if (ns === 'runtime') { part.connectNative = connectNative; delete part.$nativeConnect; delete part.$nativePost; delete part.$nativeDisconnect; delete part.onNativeEvent; }
     bridgedParts[ns] = part;
+  }
+
+  // runtime.onConnect / onMessage natifs, sans le `tab` des popups : l'extension voit le même expéditeur que dans Chrome.
+  if (!isPage && bridgedParts.runtime) {
+    const noTab = (sender) => { if (sender && sender.tab && popupTabs.has(sender.tab.id)) { try { delete sender.tab; } catch { /* expéditeur figé : on le laisse tel quel */ } } return sender; };
+    const senderEvent = (name, wrap) => {
+      const mine = new Map(); // écouteur de l'extension → écouteur posé sur l'événement natif
+      return {
+        addListener(cb, ...rest) { if (typeof cb !== 'function' || mine.has(cb)) return; const w = wrap(cb); mine.set(cb, w); root.runtime[name].addListener(w, ...rest); },
+        removeListener(cb) { const w = mine.get(cb); if (w) { root.runtime[name].removeListener(w); mine.delete(cb); } },
+        hasListener: (cb) => mine.has(cb), hasListeners: () => mine.size > 0,
+      };
+    };
+    bridgedParts.runtime.onConnect = senderEvent('onConnect', (cb) => (port, ...r) => { if (port) noTab(port.sender); return cb(port, ...r); });
+    bridgedParts.runtime.onMessage = senderEvent('onMessage', (cb) => (message, sender, ...r) => cb(message, noTab(sender), ...r));
   }
 
   const unsupportedNs = (ns) => new Proxy({}, {
