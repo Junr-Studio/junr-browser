@@ -17,7 +17,7 @@ async function click(extId, spaceId, x = 0) {
   const space = spaceId ?? tab?.spaceId ?? state.activeSpace;
   const m = bridge.manifestOf(extId);
   if (!m) return false;
-  if ((m.manifest.action || m.manifest.browser_action)?.default_popup) return popup.toggle(extId, x);
+  if (popup.pathFor(extId)) return popup.toggle(extId, x);
   const side = require('./bridge/api-sidepanel');
   if (m.manifest.side_panel && side.opensOnActionClick(space, extId)) return side.toggle(space, extId);
   bridge.emit('action.onClicked', (ctx) => { const t = tab && tab.spaceId === space ? model.tabInfo(ctx, tab) : null; return t ? [t] : null; }, { spaceId: space, extId });

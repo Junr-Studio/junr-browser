@@ -2,7 +2,7 @@
 // Onglets, vues web, changement d'espace, mise en veille, état envoyé à l'interface, raccourcis.
 const path = require('node:path');
 const { app, WebContentsView } = require('electron');
-const { state, bus, SIDEBAR_W, TOPBAR_H } = require('./state');
+const { state, bus, SIDEBAR_W, TOPBAR_H, HOME_URL, SEARCH_URL } = require('./state');
 const { getSession } = require('./sessions');
 const native = require('./native');
 const dialog = require('./dialog');
@@ -265,7 +265,7 @@ async function pickNewTabTarget() {
   return id === '__global' ? 'global' : id || null;
 }
 
-async function newTab(url = 'https://duckduckgo.com') {
+async function newTab(url = HOME_URL) {
   const active = state.tabs.get(state.activeTab);
   let spaceId = state.activeSpace;
   if (identity.zoneOf(active) !== 'client' && active) {
@@ -292,7 +292,7 @@ async function navigate(input) {
   const tab = state.tabs.get(state.activeTab);
   if (!tab || !tab.view || tab.internal) return;
   let url = input.trim();
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = /\s/.test(url) || !url.includes('.') ? `https://duckduckgo.com/?q=${encodeURIComponent(url)}` : `https://${url}`;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = /\s/.test(url) || !url.includes('.') ? SEARCH_URL + encodeURIComponent(url) : `https://${url}`;
   tab.view.webContents.loadURL(url).catch(() => {});
 }
 

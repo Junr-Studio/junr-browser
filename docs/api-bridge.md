@@ -42,7 +42,7 @@ api-X.js ─ emit('X.onÉvénement') ─► conn.send ─► shim ─► écoute
 | `omnibox` | partiel | mot-clé + espace dans la barre d'adresse : `onInputStarted/Changed/Entered/Cancelled` ; **pas de liste de suggestions affichée** |
 | `fontSettings` | partiel | liste des polices du système ; réglages mémorisés, sans effet sur le rendu |
 | `sessions` | implémenté | onglets fermés récemment, `restore` |
-| `search` | implémenté | recherche DuckDuckGo |
+| `search` | implémenté | recherche Google |
 | `privacy` | partiel | réglages mémorisés ; seule `network.webRTCIPHandlingPolicy` a un effet réel |
 | `browsingData` | partiel | `since` n'est honoré que pour l'historique |
 | `storage.sync` | alias | devient `storage.local` (pas de synchronisation entre appareils) |

@@ -1,7 +1,7 @@
 'use strict';
 // Petites API : topSites, sessions (onglets fermés récemment), search, privacy (réglages mémorisés ; seule
 // webRTCIPHandlingPolicy a un effet réel), browsingData, runtime.openOptionsPage.
-const { bus, state } = require('../../state');
+const { bus, state, SEARCH_URL } = require('../../state');
 const model = require('./model');
 
 /* ---------- topSites : sites les plus visités du client, d'après son historique ---------- */
@@ -55,7 +55,7 @@ const searchApi = {
     async query(ctx, q = {}) {
       const text = typeof q === 'string' ? q : q.text;
       if (!text) throw new Error('Text is required.');
-      const url = `https://duckduckgo.com/?q=${encodeURIComponent(text)}`;
+      const url = SEARCH_URL + encodeURIComponent(text);
       const dispo = typeof q === 'object' ? q.disposition || 'CURRENT_TAB' : 'CURRENT_TAB';
       if (dispo === 'CURRENT_TAB') {
         const tab = model.resolveTab(ctx, typeof q === 'object' ? q.tabId : undefined);

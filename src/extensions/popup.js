@@ -13,6 +13,17 @@ let autoClose = true; // les mesures automatiques (fenêtre sans focus) désacti
 
 const isOpen = () => !!view;
 
+// chrome.action.setPopup : une extension (Passbolt, une fois configurée) choisit son popup à l'exécution, sans default_popup dans le manifeste.
+const overrides = new Map(); // extId → chemin dans l'extension ('' : plus de popup)
+const clean = (p) => String(p || '').replace(/^chrome-extension:\/\/[a-p]{32}\//, '').replace(/^\//, '');
+function setPopup(id, popup) { overrides.set(id, clean(popup)); }
+// Popup à ouvrir pour cette extension : celui posé à l'exécution, sinon celui du manifeste.
+function pathFor(id) {
+  if (overrides.has(id)) return overrides.get(id) || null;
+  const rec = manager.records()[id];
+  return (rec && manager.popupPath(rec)) || null;
+}
+
 function reposition() {
   if (!view || !state.win) return;
   const { width, height } = state.win.getContentBounds();
@@ -31,8 +42,7 @@ function close() {
 async function toggle(id, x = 0) {
   if (view && extId === id) { close(); return false; }
   close();
-  const rec = manager.records()[id];
-  const rel = rec && manager.popupPath(rec);
+  const rel = pathFor(id);
   if (!rel) return false;
   const tab = state.tabs.get(state.activeTab);
   const entry = state.sessions.get(tab?.spaceId || state.activeSpace);
@@ -51,4 +61,4 @@ async function toggle(id, x = 0) {
   return true;
 }
 
-module.exports = { toggle, close, reposition, isOpen, _view: () => view, _setAutoClose: (v) => { autoClose = v; } };
+module.exports = { toggle, close, setPopup, pathFor, reposition, isOpen, _view: () => view, _setAutoClose: (v) => { autoClose = v; } };

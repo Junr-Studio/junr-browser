@@ -21,4 +21,18 @@ const { ipcRenderer } = require('electron');
     e.stopImmediatePropagation();
     ipcRenderer.send('junr:webstore-install');
   }, true);
+
+  // La page grise le bouton (attribut disabled) parce qu'elle ne reconnaît pas Chrome, alors que l'installation fonctionne : on le réactive.
+  // La page le redessine souvent, d'où l'observateur ; un seul passage par image pour ne pas la ralentir.
+  let queued = false;
+  const enable = () => {
+    queued = false;
+    for (const b of document.querySelectorAll('button[disabled]')) {
+      if ((b.innerText || '').length < 60 && add.test(b.innerText || '')) b.removeAttribute('disabled');
+    }
+  };
+  const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(enable); } };
+  const start = () => new MutationObserver(schedule).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['disabled'] });
+  if (document.documentElement) start(); else document.addEventListener('DOMContentLoaded', start, { once: true });
+  schedule();
 })();

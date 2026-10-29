@@ -48,7 +48,8 @@ async function configure() {
   updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
   updater.allowDowngrade = false;
-  updater.channel = 'latest';
+  // Pas de updater.channel : avec les pré-versions autorisées, un canal explicite « latest » fait ignorer toutes les entrées de GitHub
+  // (« No published versions on GitHub »). Sans canal, electron-updater prend la plus récente, pré-version comprise.
   updater.allowPrerelease = settings().updateChannel === 'beta';
 }
 
