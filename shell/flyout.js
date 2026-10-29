@@ -212,6 +212,51 @@ function renderExtensions(s, panel) {
   panel.append(manage);
 }
 
+/* ---------- Serveurs : liste défilante, groupée par client ---------- */
+function serverRow(it) {
+  const row = el('div', 'srow');
+  row.title = it.detail ? `${SERVER_STATE[it.state]} (${it.detail})` : SERVER_STATE[it.state];
+  const top = el('div', 'stop');
+  top.append(el('span', `sd ${it.state}`), el('span', 'sname', it.label || 'App masquée'), el('span', `sstate ${it.state}`, SERVER_STATE[it.state]));
+  row.append(top, el('div', 'ssub', [it.project, ago(it.at) || 'jamais relevé'].filter(Boolean).join(' · ')));
+  return row;
+}
+
+function renderServers(s, panel) {
+  const v = s.servers || { items: [], checkedAt: 0 };
+  const head = el('div', 'srv-head');
+  head.append(el('div', 'section-title', 'Serveurs'));
+  const waiting = v.waitUntil > Date.now() ? `Quota atteint, nouvel essai à ${new Date(v.waitUntil).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : '';
+  const sub = el('span', 'srv-sub', waiting || (v.checkedAt ? `Relevé ${ago(v.checkedAt)}` : 'Pas encore relevé'));
+  const refresh = el('button', 'chipb', 'Actualiser');
+  refresh.title = 'Relever l\'état maintenant';
+  refresh.onclick = () => act('servers-refresh');
+  head.append(sub, refresh);
+  panel.append(head);
+  if (!v.items.length) panel.append(el('div', 'empty-note', 'Aucune app observée.'));
+  else {
+    // Clients dans l'ordre de la barre, puis les apps sans client.
+    const order = (s.spaces || []).map((c) => c.name);
+    const groups = new Map();
+    for (const it of v.items) {
+      const k = it.clientName || '';
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(it);
+    }
+    const keys = [...groups.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999)));
+    const list = el('div', 'srv-list');
+    for (const k of keys) {
+      list.append(el('div', 'section-title', k || 'Non rattachées'));
+      for (const it of groups.get(k)) list.append(serverRow(it));
+    }
+    panel.append(list);
+  }
+  const manage = el('button', 'side-btn');
+  manage.append(el('span', '', v.items.length ? 'Gérer les serveurs' : 'Choisir les apps à observer'));
+  manage.onclick = () => act('open-settings', 'servers');
+  panel.append(manage);
+}
+
 // Un clic ne doit pas perdre son bouton : pendant un appui, le rendu attend le relâchement.
 let pressed = false;
 let pending = null;
@@ -225,10 +270,15 @@ function render(p) {
   last = p;
   if (pressed) { pending = p; return; }
   const panel = document.getElementById('panel');
+  const keep = document.querySelector('.srv-list')?.scrollTop || 0;
   panel.replaceChildren();
   panel.className = p.kind;
   if (p.kind === 'clients') renderClients(p.s, panel);
+  else if (p.kind === 'servers') renderServers(p.s, panel);
   else renderExtensions(p.s, panel);
+  // Un nouveau relevé redessine le volet : la liste garde sa position.
+  const list = document.querySelector('.srv-list');
+  if (list && keep) list.scrollTop = keep;
   // scrollHeight : la hauteur du contenu, pas celle (bornée par la vue) du volet affiché.
   window.junrFlyout.size(panel.scrollHeight + 10);
 }

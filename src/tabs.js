@@ -282,9 +282,14 @@ async function openInternal(page = 'settings', section = null) {
   const def = INTERNAL_PAGES[page];
   if (!def) throw new Error('Page inconnue');
   let tab = [...state.tabs.values()].find((t) => t.internal === page);
+  const fresh = !tab;
   if (!tab) tab = addTab({ spaceId: 'global', url: require('node:url').pathToFileURL(def.file).href, title: def.title, internal: page });
   await activateTab(tab.id);
-  if (section) tab.view.webContents.send('settings:section', section);
+  if (!section) return;
+  // Page neuve : le message partirait avant que la page n'écoute, et la section demandée serait perdue.
+  const wc = tab.view.webContents;
+  if (fresh && (wc.isLoading() || !wc.getURL())) await new Promise((r) => { wc.once('did-finish-load', r); setTimeout(r, 5000).unref?.(); });
+  wc.send('settings:section', section);
 }
 
 async function navigate(input) {
@@ -357,6 +362,23 @@ function shownName(id) {
   return hidden(cfg().clients[i]) ? `Client ${i + 1}` : cfg().clients[i].name;
 }
 
+// Serveurs observés. En vitrine, une app n'a plus ni nom ni projet sauf si elle est rattachée au client affiché : une app sans client,
+// ou d'un autre client, peut porter son nom (« acme-api »).
+function serversView() {
+  const v = require('./servers').view();
+  if (!state.vitrine) return v;
+  const items = v.items.map((i) => {
+    const c = i.clientId && cfg().clients.find((x) => x.id === i.clientId);
+    if (c && !hidden(c)) return i;
+    return { ...i, label: '', project: '', detail: '', clientName: c ? shownName(c.id) : null };
+  });
+  return { ...v, items };
+}
+
+// La barre n'affiche que l'icône et sa marque : elle ne reçoit pas la liste des apps (jusqu'à 500 lignes à chaque envoi d'état).
+const serversSummary = ({ items, ...summary }) => summary;
+const forBar = (s) => ({ ...s, servers: serversSummary(s.servers) });
+
 function toggleVitrine(on = !state.vitrine) {
   state.vitrine = !!on;
   pushNow();
@@ -422,6 +444,7 @@ function snapshot() {
     notice: state.notice && state.notice.until > Date.now() ? state.notice.text : null,
     previous: zone === 'client' ? mruNames[1] || null : mruNames[0] || null,
     vitrine: !!state.vitrine, resume, update: require('./updater').brief(),
+    servers: serversView(),
     protectedAwake: [...state.tabs.values()].filter((t) => t.view && !t.internal && t.spaceId !== 'global' && (t.draft || signals.toolOf(t)?.keepAwake)).length,
   };
 }
@@ -436,7 +459,7 @@ function updateTitle(s) {
 function pushNow() {
   if (state.shell && !state.shell.webContents.isDestroyed()) {
     const s = snapshot();
-    state.shell.webContents.send('state', s);
+    state.shell.webContents.send('state', forBar(s));
     require('./flyout').update(s);
     updateTitle(s);
   }
@@ -668,5 +691,5 @@ module.exports = {
   tabsOfSpace, layout, addTab, loadTab, activateTab, switchSpace, selectGroup, closeTab, newTab, navigate, openInternal, destroyView,
   sweep, unloadTab, push, pushNow, pushSoon, snapshot, pickSpace, handleInput, resolveUrl, memoryMb, hostMatches, sleepBlock,
   noteSpaceChange, notify, ackTab, goPrevious, goNextSignal, pickNewTabTarget, pickerItems, settleResume, resumeOpen,
-  toggleVitrine, captureNote, editNext, goFamily, goToolIndex, shownName, toggleDevTools, fillPassword,
+  barSnapshot: () => forBar(snapshot()), toggleVitrine, captureNote, editNext, goFamily, goToolIndex, shownName, toggleDevTools, fillPassword,
 };

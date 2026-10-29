@@ -88,11 +88,24 @@ button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .extmain:disabled { opacity: .55; cursor: default; }
 .exticon { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: #ffffff14; font-weight: 700; color: var(--side-dim); }
 .exticon img { width: 22px; height: 22px; object-fit: contain; }
-.extname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.extname, .sname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .pin { flex: none; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; cursor: pointer; font-size: 13px; opacity: .35; filter: grayscale(1); transition: opacity .12s, background .12s; }
 .pin:hover { background: #ffffff1a; opacity: .8; }
 .pin.on { opacity: 1; filter: none; background: color-mix(in srgb, var(--accent) 35%, transparent); }
 .empty-note { padding: 8px 10px; color: var(--side-dim); }
-#panel.extensions .side-btn { margin-top: 6px; border-top: 1px solid var(--side-line); border-radius: 0 0 8px 8px; }
+#panel.extensions .side-btn, #panel.servers .side-btn { margin-top: 6px; border-top: 1px solid var(--side-line); border-radius: 0 0 8px 8px; }
 .side-btn.upd { background: color-mix(in srgb, var(--accent) 28%, transparent); }
 .side-btn.upd:hover { background: color-mix(in srgb, var(--accent) 42%, transparent); }
+
+/* Serveurs : en-tête et pied fixes, liste défilante */
+.srv-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-right: 4px; }
+.srv-head .section-title { flex: 1; padding-bottom: 5px; }
+.srv-sub { font-size: 11px; color: var(--side-dim); }
+.srv-list { max-height: 380px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #ffffff30 transparent; }
+.srow { padding: 6px 8px; }
+.stop { display: flex; align-items: center; gap: 9px; }
+.sstate { flex: none; font-size: 11.5px; color: var(--side-dim); }
+.sstate.failed { color: var(--danger); font-weight: 600; }
+.sstate.deploying { color: var(--warn); }
+/* 19px = 10px de la forme .sd + 9px d'espacement de .stop : le sous-titre s'aligne sous le nom */
+.ssub { margin: 1px 0 0 19px; font-size: 11px; color: var(--side-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

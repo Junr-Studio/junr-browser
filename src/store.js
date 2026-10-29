@@ -45,6 +45,9 @@ class Store {
     data.shareLog ||= [];
     data.usedPackets ||= [];
     data.usage ||= {};            // Ctrl+K : { 'client:outil': { n, last } }
+    data.servers ||= { secrets: {}, observed: [] }; // serveurs observés : secrets chiffrés par fournisseur, apps { id, provider, ref, label, project, clientId }
+    data.servers.secrets ||= {};
+    data.servers.observed ||= [];
     this.data = data;
     this.save();
   }

@@ -13,6 +13,9 @@ if (process.platform === 'linux') {
 }
 const env = { ...process.env, JUNR_TEST: '1' };
 delete env.ELECTRON_RUN_AS_NODE;
+// `--only <motif>` équivaut à JUNR_ONLY (ne lance que les sections dont le titre correspond), sans syntaxe propre à un shell.
+const onlyAt = process.argv.indexOf('--only');
+if (onlyAt > 0 && process.argv[onlyAt + 1]) env.JUNR_ONLY = process.argv[onlyAt + 1];
 // Garde-fou externe (JUNR_TEST_TIMEOUT_MIN) : si l'application ne répond plus du tout (blocage natif, le chien de garde interne ne
 // peut alors plus s'exécuter), elle est tuée. Un blocage ou un échec est rejoué (JUNR_TEST_ATTEMPTS) : une vraie régression échoue à chaque essai, un aléa du runner (service worker lent) non.
 const { spawn } = require('node:child_process');

@@ -13,6 +13,8 @@
   --field: #ffffff14;
   --ink: #17202c;
   --warn: #f0a23b;
+  --ok: #4fb286;
+  --danger: #e5645a;
   --ease: cubic-bezier(.2, .7, .2, 1);
   font-family: "Segoe UI Variable Text", "Segoe UI", "Avenir Next", system-ui, sans-serif;
   font-size: 13px;
@@ -29,6 +31,17 @@ button { font: inherit; }
 .pd.moved { background: #fff; border-radius: 2.5px; box-shadow: 0 0 0 1.5px currentColor, 0 0 8px color-mix(in srgb, currentColor 70%, transparent); }
 .pd.audio { background: currentColor; border-radius: 0; clip-path: polygon(15% 5%, 95% 50%, 15% 95%); }
 .pd.login { border: 1.5px solid var(--warn); background: linear-gradient(135deg, transparent 42%, var(--warn) 42% 58%, transparent 58%); }
+
+/* État d'un serveur : la forme porte le sens, la couleur la renforce (plein = en ligne, anneau pointillé = en déploiement, triangle = échec, tiret = inconnu) */
+.sd { flex: none; display: inline-block; width: 10px; height: 10px; }
+.sd.online { border-radius: 50%; background: var(--ok); }
+.sd.deploying { border-radius: 50%; border: 1.5px dotted var(--warn); }
+.sd.failed { background: var(--danger); clip-path: polygon(50% 4%, 97% 94%, 3% 94%); }
+.sd.unknown { height: 2px; margin: 4px 0; border-radius: 1px; background: var(--side-dim); }
+@media (prefers-reduced-motion: no-preference) {
+  .sd.deploying { animation: sd-spin 2.4s linear infinite; }
+  @keyframes sd-spin { to { transform: rotate(360deg); } }
+}
 
 .glyph {
   flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9px;
