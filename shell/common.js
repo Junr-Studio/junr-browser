@@ -18,6 +18,9 @@ function ago(t) {
   return h < 24 ? `il y a ${h} h` : `il y a ${Math.round(h / 24)} j`;
 }
 
+// Vocabulaire d'état d'un serveur, partagé par l'icône de la barre (aria-label) et le volet : une seule table pour les deux.
+const SERVER_STATE = { online: 'En ligne', deploying: 'En déploiement', failed: 'Dernier déploiement échoué', unknown: 'Inconnu' };
+
 function duration(ms) {
   const m = Math.round(ms / 60000);
   if (m < 60) return `${m} min`;

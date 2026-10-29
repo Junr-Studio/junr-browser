@@ -141,6 +141,17 @@ function renderNotice(s) {
   n.textContent = s.notice || '';
 }
 
+// Icône des serveurs : visible dès qu'un jeton est posé ; sa marque suit le pire état (échec, puis déploiement, puis en ligne).
+function renderServers(s) {
+  const v = s.servers || { configured: false, items: [], mark: 'none', count: 0 };
+  const b = $('servers'), mark = $('servers-mark');
+  b.hidden = !v.configured;
+  mark.hidden = v.mark === 'none';
+  mark.className = `sd ${v.mark}`;
+  const n = v.count;
+  b.setAttribute('aria-label', n ? `Serveurs : ${n} app${n > 1 ? 's' : ''}, ${(SERVER_STATE[v.mark] || SERVER_STATE.unknown).toLowerCase()}` : 'Serveurs : aucune app observée');
+}
+
 function render(s) {
   current = s;
   const focused = document.activeElement?.dataset?.key || null;
@@ -148,6 +159,7 @@ function render(s) {
   renderIdentity(s);
   renderTabs(s);
   renderExtensions(s);
+  renderServers(s);
   renderNotice(s);
   $('vitrine-pill').hidden = !s.vitrine;
   const activeTab = s.tabs.find((t) => t.id === s.activeTab);
@@ -175,6 +187,7 @@ function hover(button, kind) {
 hover($('avatar'), 'clients');
 hover($('groupchip'), 'clients');
 hover($('extmenu'), 'extensions');
+hover($('servers'), 'servers');
 
 $('settingsbtn').onclick = () => window.junr.openSettings();
 $('newtab').onclick = () => window.junr.newTab();

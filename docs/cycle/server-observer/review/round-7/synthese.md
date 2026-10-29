@@ -1,0 +1,5 @@
+# Round 7 : synthèse
+
+Design system, sécurité, scalabilité, performance : Approuvé (aucun bloquant ni majeur). Architecture : Bloqué sur des tests (une mutation sur la ligne de B-1 survivait : un relevé partiel pouvait repousser le relevé complet sans qu'aucun test ne rougisse ; `deploying` périmé et la valeur exacte de `STALE_MS` non figés).
+
+Corrections du round 8 : test du relevé complet à cinq minutes du dernier relevé *complet* (4 minutes : partiel ; 5 minutes : complet, malgré un relevé partiel intermédiaire) ; `deploying` et les trois états dégradés après 21 minutes, frais à 19 ; âge négatif ; `checkedAt` après une tentative entièrement échouée ; motif d'une app sautée sans relevé ; budget en valeur littérale ; statuts 500/502/503 ; neuf apps cassées ne coupent pas, dix sans aucune réponse oui. Production : le minuteur n'est plafonné qu'au-delà de dix minutes d'attente (suite à la mesure de la performance) ; documentation alignée (vingt minutes, tailles du litmus, environ 1 s par requête).

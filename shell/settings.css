@@ -77,3 +77,9 @@ button.btn:disabled { opacity: .45; cursor: default; }
 .tools td:nth-child(3) input { min-width: 130px; }
 .tools td:nth-child(4) input { min-width: 90px; }
 .tools th { white-space: normal; }
+
+/* Serveurs : arbre de parcours des projets du fournisseur */
+.tree { list-style: none; margin: 6px 0 0; padding-left: 18px; }
+.tree li { margin: 3px 0; }
+button.node { font: inherit; padding: 4px 8px; border: 0; border-radius: 7px; background: none; color: var(--ink); cursor: pointer; text-align: left; }
+button.node:hover { background: var(--accent-soft); }

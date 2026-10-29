@@ -348,6 +348,82 @@ async function sectionShare() {
   ];
 }
 
+/* ---------- Serveurs ---------- */
+// Arbre de parcours par fournisseur : { open: Set(chemins ouverts), nodes: Map(chemin -> nœuds déjà chargés) }. Conservé entre deux rendus.
+const serverTree = {};
+const pathKey = (path) => path.join('/');
+
+async function openServerNode(provider, path) {
+  const t = (serverTree[provider] ||= { open: new Set(), nodes: new Map() });
+  const k = pathKey(path);
+  if (t.open.has(k)) { t.open.delete(k); return render(); }
+  if (!t.nodes.has(k)) {
+    try { t.nodes.set(k, await api('servers.browse', { provider, path })); } catch (e) { toast(e.message, true); return; }
+  }
+  t.open.add(k);
+  await render();
+}
+
+function serverNodes(provider, path, byKey) {
+  const t = serverTree[provider];
+  const nodes = t?.nodes.get(pathKey(path)) || [];
+  if (!nodes.length) return h('p', { class: 'muted' }, 'Rien à afficher ici.');
+  return h('ul', { class: 'tree' }, nodes.map((n) => {
+    if (n.truncated) return h('li', { class: 'muted' }, n.name);
+    if (n.app) {
+      const entry = byKey.get(n.app.refKey);
+      const box = h('input', { type: 'checkbox', checked: !!entry, 'aria-label': `Observer ${n.app.label}`,
+        onchange: () => run(() => (box.checked ? api('servers.observe', { provider, ...n.app }) : api('servers.unobserve', { id: entry.id })), box.checked ? 'App observée' : 'App retirée') });
+      return h('li', null, h('label', { class: 'inline' }, box, n.name));
+    }
+    const sub = [...path, n.id];
+    const open = t.open.has(pathKey(sub));
+    return h('li', null,
+      h('button', { class: 'node', type: 'button', 'data-node': n.id, 'aria-expanded': String(open), onclick: () => openServerNode(provider, sub) }, `${open ? '▾' : '▸'} ${n.name}`),
+      open ? serverNodes(provider, sub, byKey) : null);
+  }));
+}
+
+function serverProviderCard(p, byKey) {
+  const ready = p.secrets.every((f) => f.saved);
+  const inputs = p.secrets.map((f) => h('input', {
+    type: 'password', autocomplete: 'off', style: 'flex:1;min-width:260px',
+    'aria-label': `${f.label} ${p.label}`,
+    placeholder: f.saved ? 'Enregistré (laisser vide pour le conserver)' : f.label,
+  }));
+  const save = () => run(async () => {
+    for (const [i, f] of p.secrets.entries()) if (inputs[i].value) await api('servers.setSecret', { provider: p.id, key: f.key, value: inputs[i].value });
+  }, 'Enregistré');
+  const t = serverTree[p.id];
+  return h('div', { class: 'card' }, h('h2', null, p.label),
+    h('div', { class: 'row' }, inputs,
+      h('button', { class: 'btn primary', type: 'button', 'aria-label': `Enregistrer le jeton ${p.label}`, onclick: save }, 'Enregistrer'),
+      ready ? dangerButton('Effacer', 'Confirmer ?', () => run(async () => { for (const f of p.secrets) await api('servers.setSecret', { provider: p.id, key: f.key, value: null }); delete serverTree[p.id]; }, 'Jeton effacé')) : null),
+    ready ? h('div', null,
+      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', 'aria-label': `Parcourir ${p.label}`, onclick: () => { delete serverTree[p.id]; openServerNode(p.id, []); } }, 'Parcourir et choisir les apps')),
+      t?.open.has('') ? serverNodes(p.id, [], byKey) : null) : h('p', { class: 'muted' }, 'Enregistrez le jeton pour parcourir les projets.'));
+}
+
+async function sectionServers() {
+  const cfg = await api('servers.config');
+  const byKey = new Map(cfg.observed.map((o) => [o.refKey, o]));
+  const rows = cfg.observed.map((o) => {
+    const sel = h('select', { 'aria-label': `Client de ${o.label}`, onchange: () => run(() => api('servers.assign', { id: o.id, clientId: sel.value || null }), 'Rattachement enregistré') },
+      h('option', { value: '' }, 'Non rattachée'), model.clients.map((c) => h('option', { value: c.id, selected: c.id === o.clientId }, c.name)));
+    return h('tr', null, h('td', null, o.label), h('td', { class: 'muted' }, o.project), h('td', null, sel),
+      h('td', null, dangerButton('Retirer', 'Confirmer ?', () => run(() => api('servers.unobserve', { id: o.id }), 'App retirée'))));
+  });
+  return [
+    h('h1', null, 'Serveurs'),
+    h('p', { class: 'lead' }, 'Suivez en lecture seule l\'état des serveurs où sont déployés vos projets : en ligne, en déploiement ou dernier déploiement échoué. L\'état se lit au survol de l\'icône des serveurs dans la barre. Le jeton est chiffré par le coffre du système, seules des requêtes de lecture sont envoyées, et uniquement au fournisseur.'),
+    cfg.providers.map((p) => serverProviderCard(p, byKey)),
+    h('div', { class: 'card' }, h('h2', null, `Apps observées (${cfg.observed.length})`),
+      rows.length ? h('table', { class: 'tools' }, h('thead', null, h('tr', null, h('th', null, 'App'), h('th', null, 'Projet'), h('th', null, 'Client'), h('th'))), h('tbody', null, rows))
+        : h('p', { class: 'muted' }, 'Aucune app observée. Parcourez un fournisseur et cochez les apps à suivre.'),
+      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', disabled: !cfg.observed.length, onclick: () => run(() => api('servers.refresh'), 'Relevé effectué') }, 'Actualiser'))),
+  ];
+}
+
 /* ---------- À propos ---------- */
 async function sectionAbout() {
   const [a, up] = await Promise.all([api('about'), api('update.get')]);
@@ -404,6 +480,7 @@ const SECTIONS = {
   native: ['Fonctions natives', sectionNative],
   downloads: ['Téléchargements et historique', sectionDownloads],
   share: ['Partage', sectionShare],
+  servers: ['Serveurs', sectionServers],
   about: ['À propos', sectionAbout],
 };
 

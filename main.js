@@ -97,6 +97,7 @@ app.whenReady().then(async () => {
   } else {
     await start(seedConfig(state.diagUrl));
     require('./src/updater').start().catch((e) => console.error('Mises à jour :', e.message));
+    require('./src/servers').start();
   }
 });
 app.on('window-all-closed', () => app.quit());

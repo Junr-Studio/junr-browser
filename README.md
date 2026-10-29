@@ -8,6 +8,8 @@ Navigateur de bureau multi-clients basé sur Electron (Chromium embarqué) : un 
 npm install
 npm start            # Linux en root : npm run start:root
 npm test             # plus de 500 vérifications automatiques (Linux sans écran : xvfb-run est utilisé automatiquement)
+npm run test:unit    # tests unitaires en Node pur (src/servers/)
+npm run test:e2e     # suite Electron sans les sections qui dépendent d'un vrai bureau (npm run test:desktop les lance seules)
 ```
 
 ## Le carnet de clients (interface)
@@ -41,6 +43,7 @@ Raccourcis : Ctrl+1…9 client · Ctrl+K aller à… · Ctrl+Tab client précéd
 | Mise en veille : délai, exclusions par site, seuil de RAM | Réglages › Mise en veille |
 | Navigation rapide, menu contextuel des pages, téléchargements automatiques, historique par client | `src/tabs.js`, `src/contextmenu.js` · Réglages › Téléchargements et historique |
 | Fonctions natives : blocage réseau, injection de CSS/scripts, mots de passe chiffrés remplis à la demande | Réglages › Fonctions natives |
+| **Serveurs** : état en ligne / en déploiement / dernier déploiement échoué des apps déployées (Railway en premier, fournisseurs interchangeables), icône dans la barre avec liste au survol, jeton en lecture seule chiffré, sondage adaptatif 30 s / 5 min | `src/servers/`, **`docs/SERVERS.md`** · Réglages › Serveurs |
 | **Partage d'un espace** : paquet `.junrshare` chiffré (X25519 + AES-256-GCM) et **signé** (Ed25519), test de portabilité par outil, expiration, usage unique, journal ; transport par fichier **ou par le relais** | `src/share.js`, `src/relay.js`, `server/` · Réglages › Partage |
 | **Publication et mises à jour** : installeur Windows par Releases GitHub, mise à jour automatique en arrière-plan (installée à la fermeture), canaux stable et bêta, montée d'Electron/Chromium automatique par Dependabot quand les tests passent | `src/updater.js`, `.github/`, **`docs/RELEASES.md`** · Réglages › À propos |
 | Sécurité : `contextIsolation`, `sandbox`, pas de `nodeIntegration` sur toutes les vues (testé) ; API d'administration réservée aux pages internes ; `npm run check:electron` | `src/ipc.js`, `docs/ELECTRON-UPDATES.md` |
@@ -67,6 +70,7 @@ Corpus de 24 extensions du Web Store : **Electron nu 2/24 (8,3 %)**, **avec le p
 - Application non signée (usage interne) : Windows peut avertir à la première installation. Pas de version macOS ni Linux construite.
 - Le pont est du code à maintenir : à chaque version d'Electron, relancer `npm test` et `npm run phase0` (`docs/ELECTRON-UPDATES.md`).
 - `omnibox` sans liste de suggestions ; `tabCapture.capture` impossible (voie MV3 seulement) ; `pageCapture`, `debugger`, `gcm` non pris en charge.
+- Serveurs observés : les requêtes Railway sont validées contre un faux serveur, pas encore contre un compte réel ; Railway n'offre pas de jeton en lecture seule (la garantie vient du code, voir `docs/SERVERS.md`).
 - Le relais de partage (`server/relay.js`) est prêt mais **non hébergé** ; l'expéditeur d'un paquet est authentifié par sa signature, le destinataire en confirme l'empreinte à la première réception.
 - Pas de DRM Widevine ni de synchronisation de compte Google. L'URL de téléchargement des CRX n'est pas une API garantie et les conditions du Chrome Web Store ne prévoient pas l'usage hors Chrome.
 
@@ -75,6 +79,7 @@ Corpus de 24 extensions du Web Store : **Electron nu 2/24 (8,3 %)**, **avec le p
 ```
 main.js               démarrage, modes automatiques (JUNR_TEST, JUNR_SCRIPT)
 src/                  store, sessions, tabs, spaces, permissions, native, share, relay, dialog, contextmenu, displaymedia, ipc
+src/servers/          observation des serveurs : contrat fournisseur, Railway, noyau (état, sondage, secrets)
 src/extensions/       manager (Web Store), compat, popup, actions, shim, sw-shim + bridge/ (une API par fichier api-*.js)
 server/               relais de partage (Node sans dépendance)
 shell/                interface : barre du haut, volets au survol, dialogue, page Réglages
