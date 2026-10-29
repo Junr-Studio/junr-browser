@@ -49,12 +49,40 @@ async function openIn(core, spaceId, url) {
 
 async function run(core) {
   const { state, tabs, spaces, extManager, sessions, session, dialog } = core;
+  // Une fenêtre réduite (par le système, un autre programme…) ne produit plus d'images : les captures d'onglet et d'écran n'aboutissent
+  // jamais et la suite reste bloquée. On la remet à l'écran dès qu'elle est réduite, en le signalant une fois.
+  let reduced = false;
+  const keepShown = () => {
+    const w = state.win;
+    if (!w || w.isDestroyed() || !w.isMinimized()) return;
+    if (!reduced) { reduced = true; console.log(`DIAG  fenêtre réduite pendant les tests (après « ${results.length ? results[results.length - 1].name : 'aucune'} ») : restaurée`); }
+    w.restore();
+  };
+  keepShown();
+  setInterval(keepShown, 500);
   // Garde-fou : un test bloqué (runner lent) échoue vite en disant où, au lieu d'attendre la fin du délai du job.
   if (process.env.JUNR_TEST_TIMEOUT_MIN) {
     setTimeout(() => {
       console.log(`FAIL  Test bloqué : plus de ${process.env.JUNR_TEST_TIMEOUT_MIN} min. Dernière vérification : « ${results.length ? results[results.length - 1].name : 'aucune'} »`);
       app.exit(1);
-    }, Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000).unref();
+    }, Number(process.env.JUNR_TEST_TIMEOUT_MIN) * 60000); // pas de unref() : sans minuteur actif, la boucle de Node dans Electron ne se réveille pas pour lui
+    // Diagnostic de blocage : si rien ne se passe pendant 45 s, dit si la boucle d'événements est bloquée (retard du minuteur)
+    // ou si une promesse n'aboutit jamais, et dans quel état sont les fenêtres et les vues.
+    let seen = 0, since = process.hrtime.bigint(), beat = process.hrtime.bigint();
+    const ms = (a) => Number((process.hrtime.bigint() - a) / 1000000n);
+    setInterval(() => {
+      const lag = ms(beat) - 1000; beat = process.hrtime.bigint();
+      if (lag > 3000) console.log(`DIAG  boucle d'événements bloquée pendant ${Math.round(lag / 1000)} s`);
+      if (results.length !== seen) { seen = results.length; since = process.hrtime.bigint(); return; }
+      if (ms(since) < 45000) return;
+      since = process.hrtime.bigint();
+      try {
+        const { webContents, BaseWindow } = require('electron');
+        const wins = BaseWindow.getAllWindows().map((w) => ({ min: w.isMinimized(), vis: w.isVisible(), b: w.getBounds() }));
+        const views = webContents.getAllWebContents().map((w) => ({ t: w.getType(), l: w.isLoading(), c: w.isCrashed(), u: String(w.getURL()).slice(0, 60) }));
+        console.log(`DIAG  aucune vérification depuis 45 s (après « ${results.length ? results[results.length - 1].name : 'aucune'} ») — fenêtres ${JSON.stringify(wins)} — vues ${JSON.stringify(views)}`);
+      } catch (e) { console.log('DIAG  état illisible : ' + e.message); }
+    }, 1000);
   }
   const srv = await testServer.start();
   const only = process.env.JUNR_ONLY ? new RegExp(process.env.JUNR_ONLY, 'i') : null;
@@ -154,6 +182,67 @@ async function run(core) {
     check('Client supprimé du store', !state.store.data.clients.some((x) => x.id === c.id));
     check('Cookies du client effacés à la suppression', (await after.cookies.get({})).length === 0);
     check('Client supprimé relu depuis le disque', !new Store(state.store.file, {}).data.clients.some((x) => x.id === c.id));
+  });
+
+  await section('Scripts de l\'interface', async () => {
+    // Une erreur de syntaxe dans un script de page le rend inerte sans rien afficher (volet vide) : on les compile tous.
+    const dir = path.join(__dirname, '..', 'shell');
+    const broken = fs.readdirSync(dir).filter((f) => f.endsWith('.js')).filter((f) => {
+      try { new (require('node:vm').Script)(fs.readFileSync(path.join(dir, f), 'utf8'), { filename: f }); return false; } catch { return true; }
+    });
+    check('Tous les scripts de shell/ se compilent', broken.length === 0, broken);
+    const flyout = require('../src/flyout');
+    await flyout.open('clients', { x: 8, right: 42 });
+    const filled = await until(() => flyout._view()?.webContents.executeJavaScript('document.getElementById("panel").children.length > 0').catch(() => false), 5000);
+    check('Le volet des clients affiche son contenu', !!filled);
+    flyout.close();
+  });
+
+  await section('Installation depuis le Chrome Web Store', async () => {
+    const store = require('../src/extensions/webstore');
+    const id = 'didegimhafipceonhjepacocaffmoppf';
+    check('Identifiant lu dans l\'adresse d\'une extension', store.idOf(`https://chromewebstore.google.com/detail/passbolt/${id}?hl=fr`) === id);
+    check('Ancienne adresse chrome.google.com reconnue', store.idOf(`https://chrome.google.com/webstore/detail/${id}`) === id);
+    check('Pas d\'identifiant hors page d\'extension', store.idOf('https://chromewebstore.google.com/category/extensions') === null);
+    check('Un faux domaine n\'est pas le Store', !store.isStoreUrl(`https://chromewebstore.google.com.exemple.fr/detail/x/${id}`) && !store.isStoreUrl(`http://chromewebstore.google.com/detail/x/${id}`));
+  });
+
+  await section('Moteur de recherche', async () => {
+    const { SEARCH_URL, HOME_URL } = require('../src/state');
+    check('Le moteur de recherche est Google', SEARCH_URL === 'https://www.google.com/search?q=' && HOME_URL === 'https://www.google.com');
+    const src = ['tabs.js', 'contextmenu.js', 'extensions/bridge/api-misc.js', 'extensions/bridge/api-windows.js', 'extensions/bridge/model.js'].map((f) => fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8')).join('\n');
+    check('Aucun autre moteur de recherche en dur dans le code', !/duckduckgo|bing\.com|qwant|ecosia/i.test(src));
+  });
+
+  // Le shim s'exécute dans le service worker : on l'évalue ici avec un faux `chrome` et un faux pont, pour vérifier que le popup n'y
+  // est pas vu comme un onglet (Passbolt le reconnaît à l'absence de `sender.tab`) alors qu'un vrai onglet l'est toujours.
+  await section('Popup : expéditeur sans onglet', async () => {
+    const vm = require('node:vm');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'extensions', 'sw-shim.js'), 'utf8');
+    const listeners = { onConnect: new Set(), onMessage: new Set() };
+    const native = { runtime: { onConnect: { addListener: (f) => listeners.onConnect.add(f), removeListener: (f) => listeners.onConnect.delete(f) },
+      onMessage: { addListener: (f) => listeners.onMessage.add(f), removeListener: (f) => listeners.onMessage.delete(f) } } };
+    let push = null; const replies = [];
+    const bridge = { invoke: async (p, a) => { if (p === '$reply') replies.push(a); }, subscribe: async () => {}, unsubscribe: async () => {}, onEvent: (cb) => { push = cb; } };
+    const g = { chrome: native, location: { href: 'chrome-extension://abc/sw.js' }, console, setTimeout: () => 0, __junr: bridge, __JUNR_SPEC: { ns: { runtime: { methods: [], events: [] } }, unsupported: [] } };
+    g.globalThis = g;
+    vm.runInNewContext(src, g);
+    const seen = [];
+    g.chrome.runtime.onConnect.addListener((port) => seen.push(port.sender.tab ? port.sender.tab.id : null));
+    g.chrome.runtime.onMessage.addListener((m, sender) => { seen.push(sender.tab ? sender.tab.id : null); return true; });
+    push({ name: 'runtime.$popupTab', args: [7], replyId: 'r1' });
+    check('Le worker confirme avoir noté le popup', replies.length === 1 && replies[0][0] === 'r1' && replies[0][1] === true, replies);
+    for (const f of listeners.onConnect) f({ name: 'quickaccess', sender: { tab: { id: 7 }, url: 'chrome-extension://abc/popup.html' } });
+    for (const f of listeners.onConnect) f({ name: 'x', sender: { tab: { id: 8 } } });
+    let ret; for (const f of listeners.onMessage) ret = f('hi', { tab: { id: 7 } }, () => {});
+    for (const f of listeners.onMessage) f('hi', { tab: { id: 9 } }, () => {});
+    check('Connexion du popup : plus de sender.tab, comme dans Chrome', seen[0] === null, seen);
+    check('Connexion d\'un vrai onglet : sender.tab conservé', seen[1] === 8, seen);
+    check('Message du popup : plus de sender.tab, et le retour « réponse asynchrone » est conservé', seen[2] === null && ret === true, { seen, ret });
+    check('Message d\'un vrai onglet : sender.tab conservé', seen[3] === 9, seen);
+    const fn = () => {};
+    g.chrome.runtime.onConnect.addListener(fn);
+    check('hasListener / removeListener fonctionnent sur l\'événement enveloppé', g.chrome.runtime.onConnect.hasListener(fn) && (g.chrome.runtime.onConnect.removeListener(fn), !g.chrome.runtime.onConnect.hasListener(fn)));
   });
 
   await section('Sécurité des vues', async () => {
@@ -365,8 +454,13 @@ async function run(core) {
     const popupWc = await until(() => state.win.contentView.children.map((c) => c.webContents).find((w) => w && w.getURL().startsWith(`chrome-extension://${id}/popup.html`)));
     const shownId = popupWc && await until(async () => (await popupWc.executeJavaScript(`document.getElementById('id').textContent`).catch(() => '')) || null);
     check('Popup de l\'extension ouvert, avec accès à chrome.runtime', opened && shownId === id, shownId);
+    const iconX = popup._view().getBounds().x;
     await popup.toggle(id, 900);
     check('Second clic ferme le popup', !popup.isOpen());
+    // chrome.action.openPopup() n'indique pas de position : le popup reprend celle de l'icône cliquée, sinon le bord droit de la fenêtre.
+    await popup.toggle(id, 0);
+    check('Popup ouvert par l\'extension : sous l\'icône, pas collé à gauche', popup.isOpen() && popup._view().getBounds().x === iconX && iconX > 0, { x: popup._view().getBounds().x, iconX });
+    await popup.toggle(id, 0);
 
     // Désactivation / réactivation.
     await extManager.setEnabled(id, false);
@@ -499,7 +593,7 @@ async function run(core) {
     check('Version de développement : pas de mise à jour automatique', (await updater.start()).state === 'off');
     await updater.start({ impl: fake });
     check('Source des versions : les Releases GitHub du dépôt', fake.feed.provider === 'github' && fake.feed.owner === pkg.build.publish[0].owner && fake.feed.repo === pkg.build.publish[0].repo, fake.feed);
-    check('Téléchargement en arrière-plan, installation à la fermeture, jamais de retour en arrière', fake.autoDownload === true && fake.autoInstallOnAppQuit === true && fake.allowDowngrade === false && fake.channel === 'latest');
+    check('Téléchargement en arrière-plan, installation à la fermeture, jamais de retour en arrière', fake.autoDownload === true && fake.autoInstallOnAppQuit === true && fake.allowDowngrade === false);
     check('Canal stable par défaut : pas de pré-versions', fake.allowPrerelease === false && state.store.data.settings.updateChannel === 'stable');
     check('Rien de prêt : la barre ne montre rien', tabs.snapshot().update === null);
 
@@ -522,10 +616,13 @@ async function run(core) {
     check('Une erreur réseau n\'annule pas une mise à jour déjà prête', state.update.state === 'ready' && state.update.error === 'réseau coupé');
 
     const pub = await require('../src/ipc').admin['update.get']();
-    check('Réglages : version installée, canal, source', pub.version === pkg.version && pub.channel === 'stable' && /github\.com\//.test(pub.source) && pub.state === 'ready', pub);
+    check('Réglages : version installée, canal, source', pub.version === pkg.version && pub.channel === 'stable' && pub.source === 'github.com/Junr-Studio/junr-browser' && pub.state === 'ready', pub);
+    const publish = pkg.build.publish[0];
+    check('La source de mise à jour reste celle de build.publish', pub.source === `github.com/${publish.owner}/${publish.repo}`, publish);
 
     await updater.setChannel('beta');
     check('Canal bêta : les pré-versions sont proposées', fake.allowPrerelease === true && state.store.data.settings.updateChannel === 'beta');
+    check('Canal bêta : aucun canal explicite (sinon GitHub ne renvoie aucune version)', fake.channel == null, fake.channel);
     let bad = '';
     try { await updater.setChannel('nightly'); } catch (e) { bad = e.message; }
     check('Canal inconnu refusé', /Canal inconnu/.test(bad) && state.store.data.settings.updateChannel === 'beta', bad);
@@ -864,6 +961,10 @@ async function run(core) {
     await actions.click(restricted.id, 'acme');
     const ac = await until(async () => (await restricted.events('acme')).find((e) => e.name === 'action.onClicked'), 8000, 150);
     check('Icône sans popup : action.onClicked(tab)', ac?.args[0].id === activeTab.view.webContents.id);
+    await restricted.call('acme', 'action.setPopup', { popup: 'quick.html' });
+    check('action.setPopup : le popup posé à l\'exécution est celui de l\'extension', popup.pathFor(restricted.id) === 'quick.html' && (await restricted.call('acme', 'action.getPopup')) === 'quick.html');
+    await restricted.call('acme', 'action.setPopup', { popup: '' });
+    check('action.setPopup vide : plus de popup', popup.pathFor(restricted.id) === null);
 
     const wBefore = activeTab.view.getBounds().width;
     await x.call('acme', 'sidePanel.open', {});
@@ -1042,7 +1143,7 @@ async function run(core) {
     check('sessions.restore : onglet rouvert', restored.tab.url.endsWith('?ferme') && tabs.tabsOfSpace('acme').some((t) => t.view?.webContents.id === restored.tab.id));
     check('sessions.getDevices', (await x.call('acme', 'sessions.getDevices')).length === 0);
     await x.call('acme', 'search.query', { text: 'junr browser', disposition: 'NEW_TAB' });
-    check('search.query : ouvre la recherche dans un nouvel onglet', tabs.tabsOfSpace('acme').some((t) => (t.view?.webContents.getURL() || t.url).startsWith('https://duckduckgo.com/?q=junr%20browser')));
+    check('search.query : ouvre la recherche dans un nouvel onglet', tabs.tabsOfSpace('acme').some((t) => (t.view?.webContents.getURL() || t.url).startsWith('https://www.google.com/search?q=junr%20browser')));
 
     check('privacy : valeur par défaut', (await x.call('acme', 'privacy.settingGet', 'network.webRTCIPHandlingPolicy')).value === 'default');
     await x.listen('acme', 'privacy.network.webRTCIPHandlingPolicy.onChange'); await x.events('acme');
@@ -1218,7 +1319,7 @@ async function run(core) {
     state.extBase = savedBase;
     check('Mise à jour de l\'extension de test', updated.some((u) => u.id === x.id && u.from === '1.0.0' && u.to === '2.0.0'), updated);
     const boot = await until(async () => { try { const s = await x.startup('acme'); return s.length ? s : null; } catch { return null; } }, 20000, 400);
-    check('runtime.onInstalled({reason: "update", previousVersion: "1.0.0"}) après mise à jour, sans onStartup', boot?.some((e) => e.name === 'runtime.onInstalled' && e.details.reason === 'update' && e.details.previousVersion === '1.0.0') && !boot.some((e) => e.name === 'runtime.onStartup'), boot);
+    check('runtime.onInstalled({reason: "update", previousVersion: "1.0.0"}) après mise à jour, sans onStartup', boot?.some((e) => e.name === 'runtime.onInstalled' && e.details.reason === 'update' && e.details.previousVersion === '1.0.0') && !boot.some((e) => e.name === 'runtime.onStartup'), boot || { running: Object.values(sessions.getSession('acme').ses.serviceWorkers.getAllRunning()).map((w) => w.scope), conns: require('../src/extensions/bridge').connections().filter((c) => c.extId === x.id).map((c) => c.kind) });
   });
 
   await section('Pont d\'API : messagerie native', async () => {
@@ -1403,22 +1504,184 @@ async function run(core) {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  await section('Serveurs : observation, secrets et API d\'administration', async () => {
+    const providers = require('../src/servers/providers');
+    const servers = require('../src/servers');
+    let mode = 'online';
+    providers.register({
+      id: 'demo', label: 'Démo', secrets: [{ key: 'token', label: 'Jeton' }],
+      browse: async (creds, p) => (p.length ? [{ id: 'a1', name: 'api (prod)', app: { ref: { n: 1 }, label: 'api (prod)', project: 'Projet démo' } }] : [{ id: 'w1', name: 'Espace démo' }]),
+      statuses: async (creds, refs) => refs.map(() => ({ state: mode, detail: mode })),
+    });
+    const admin = core.ipc.admin;
+    const SECRET = 'jeton-SECRET-pour-test-0123';
+    const cfg = await admin['servers.config']({});
+    check('Serveurs : Railway et le fournisseur de test sont proposés', cfg.providers.some((p) => p.id === 'railway') && cfg.providers.some((p) => p.id === 'demo'));
+    check('Serveurs : sans jeton, la barre n\'affiche rien', tabs.snapshot().servers.configured === false);
+    check('Serveurs : parcours refusé sans jeton', /jeton/i.test(await throws(() => admin['servers.browse']({ provider: 'demo', path: [] })) || ''));
+    await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: SECRET });
+    check('Serveurs : jeton chiffré dans le fichier de données', !fs.readFileSync(state.store.file, 'utf8').includes(SECRET) && JSON.stringify(await admin['servers.config']({})).includes(SECRET) === false);
+    check('Serveurs : la barre sait qu\'un jeton est posé', tabs.snapshot().servers.configured === true);
+    const roots = await admin['servers.browse']({ provider: 'demo', path: [] });
+    const leaves = await admin['servers.browse']({ provider: 'demo', path: [roots[0].id] });
+    const entry = await admin['servers.observe']({ provider: 'demo', ...leaves[0].app });
+    await admin['servers.observe']({ provider: 'demo', ...leaves[0].app });
+    check('Serveurs : une app cochée deux fois n\'est observée qu\'une fois', (await admin['servers.config']({})).observed.length === 1);
+    await admin['servers.refresh']({});
+    const item = () => tabs.snapshot().servers.items[0];
+    check('Serveurs : le statut relevé arrive dans l\'état de la barre', item()?.state === 'online' && tabs.snapshot().servers.mark === 'online', item());
+    mode = 'failed';
+    await admin['servers.refresh']({});
+    check('Serveurs : un déploiement échoué remonte à la marque globale', item().state === 'failed' && tabs.snapshot().servers.mark === 'failed');
+    await admin['servers.assign']({ id: entry.id, clientId: 'acme' });
+    check('Serveurs : l\'app rattachée porte le nom de son client', item().clientName === 'Acme');
+    state.vitrine = true; await tabs.switchSpace('globex');
+    check('Serveurs : en vitrine, le client d\'une autre app est masqué', !JSON.stringify(tabs.snapshot().servers).includes('Acme') && tabs.snapshot().servers.items[0].label === '', tabs.snapshot().servers.items[0]);
+    const loose = await admin['servers.observe']({ provider: 'demo', ref: { n: 2 }, label: 'interne-acme', project: 'Projet Acme' });
+    check('Serveurs : en vitrine, une app sans client est masquée aussi', !JSON.stringify(tabs.snapshot().servers).includes('interne-acme'), tabs.snapshot().servers.items.map((i) => i.label));
+    state.vitrine = false;
+    await admin['servers.unobserve']({ id: loose.id });
+    check('Serveurs : client inconnu refusé', /client inconnu/i.test(await throws(() => admin['servers.assign']({ id: entry.id, clientId: 'nope' })) || ''));
+    await admin['servers.unobserve']({ id: entry.id });
+    check('Serveurs : app retirée de la liste', tabs.snapshot().servers.items.length === 0);
+    await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: null });
+    check('Serveurs : jeton effacé', tabs.snapshot().servers.configured === false);
+    servers.stop();
+  });
+
+  await section('Serveurs : page Réglages', async () => {
+    const providers = require('../src/servers/providers');
+    providers.register({
+      id: 'demo', label: 'Démo', secrets: [{ key: 'token', label: 'Jeton' }],
+      browse: async (creds, p) => (p.length ? [{ id: 'a1', name: 'api (prod)', app: { ref: { n: 1 }, label: 'api (prod)', project: 'Projet démo' } }] : [{ id: 'w1', name: 'Espace démo' }]),
+      statuses: async (creds, refs) => refs.map(() => ({ state: 'online', detail: 'ok' })),
+    });
+    const admin = core.ipc.admin;
+    const SECRET = 'jeton-SECRET-reglages-4567';
+    await tabs.openInternal('settings');
+    const tab = [...state.tabs.values()].find((t) => t.internal === 'settings');
+    await loaded(tab);
+    await tabs.openInternal('settings', 'servers');
+    const h1 = await until(async () => ((await ev(tab, `document.querySelector('#content h1')?.textContent`).catch(() => null)) === 'Serveurs' ? 'Serveurs' : null), 5000, 150);
+    check('Réglages › Serveurs : la section s\'affiche', h1 === 'Serveurs', h1);
+    const click = (sel) => ev(tab, `(() => { const n = document.querySelector(${JSON.stringify(sel)}); if (!n) return false; n.click(); return true; })()`);
+    const has = (sel) => until(async () => (await ev(tab, `!!document.querySelector(${JSON.stringify(sel)})`)) || null, 4000, 100);
+    check('Réglages › Serveurs : sans jeton, pas de parcours proposé', !(await ev(tab, `!!document.querySelector('[aria-label="Parcourir Démo"]')`)));
+    await ev(tab, `(() => { const i = document.querySelector('input[aria-label="Jeton Démo"]'); i.value = ${JSON.stringify(SECRET)}; return i.type; })()`)
+      .then((type) => check('Réglages › Serveurs : le champ du jeton est masqué', type === 'password', type));
+    await click('button[aria-label="Enregistrer le jeton Démo"]');
+    check('Réglages › Serveurs : jeton enregistré, parcours proposé', !!(await has('[aria-label="Parcourir Démo"]')));
+    check('Réglages › Serveurs : le jeton n\'est jamais dans la page', !(await ev(tab, `document.documentElement.innerHTML.includes(${JSON.stringify(SECRET)}) || [...document.querySelectorAll('input')].some((i) => i.value.includes(${JSON.stringify(SECRET)}))`)));
+    await click('[aria-label="Parcourir Démo"]');
+    await click(await has('button[data-node="w1"]') && 'button[data-node="w1"]');
+    const box = 'input[aria-label="Observer api (prod)"]';
+    check('Réglages › Serveurs : le parcours mène aux apps', !!(await has(box)));
+    await click(box);
+    await until(async () => (await admin['servers.config']({})).observed.length === 1 || null, 4000, 100);
+    check('Réglages › Serveurs : cocher une app l\'observe', (await admin['servers.config']({})).observed.length === 1);
+    check('Réglages › Serveurs : l\'app observée est cochée et listée', !!(await has('input[aria-label="Observer api (prod)"]:checked')) && !!(await has('select[aria-label="Client de api (prod)"]')));
+    await ev(tab, `(() => { const s = document.querySelector('select[aria-label="Client de api (prod)"]'); s.value = 'acme'; s.dispatchEvent(new Event('change')); })()`);
+    await until(async () => (await admin['servers.config']({})).observed[0]?.clientId === 'acme' || null, 4000, 100);
+    check('Réglages › Serveurs : l\'app est rattachée au client choisi', (await admin['servers.config']({})).observed[0]?.clientId === 'acme');
+    await click('input[aria-label="Observer api (prod)"]');
+    await until(async () => (await admin['servers.config']({})).observed.length === 0 || null, 4000, 100);
+    check('Réglages › Serveurs : décocher retire l\'app', (await admin['servers.config']({})).observed.length === 0);
+    await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: null });
+    await tabs.closeTab(tab.id);
+    require('../src/servers').stop();
+  });
+
+  await section('Serveurs : icône de la barre et volet au survol', async () => {
+    const providers = require('../src/servers/providers');
+    const servers = require('../src/servers');
+    const flyout = require('../src/flyout');
+    const outcome = { 1: 'online', 2: 'failed', 3: 'deploying', 4: 'unknown' };
+    providers.register({
+      id: 'demo', label: 'Démo', secrets: [{ key: 'token', label: 'Jeton' }],
+      browse: async () => [],
+      statuses: async (creds, refs) => refs.map((r) => ({ state: outcome[r.n] || 'online', detail: outcome[r.n] || 'online' })),
+    });
+    const admin = core.ipc.admin;
+    const bar = (code) => state.shell.webContents.executeJavaScript(code, true);
+    const panel = (code) => flyout._view().webContents.executeJavaScript(code, true);
+    state.vitrine = false; await tabs.switchSpace('acme');
+    check('Icône des serveurs : cachée sans jeton', await bar(`document.getElementById('servers').hidden`) === true);
+    await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: 'jeton-pour-volet-8910' });
+    const mk = (n, label) => ({ provider: 'demo', ref: { n }, label, project: `Projet ${n}` });
+    const a1 = await admin['servers.observe'](mk(1, 'api'));
+    await admin['servers.observe'](mk(2, 'site'));
+    await admin['servers.observe'](mk(3, 'worker'));
+    await admin['servers.observe'](mk(4, 'cron'));
+    await admin['servers.assign']({ id: a1.id, clientId: 'acme' });
+    await admin['servers.refresh']({});
+    check('Icône des serveurs : visible avec un jeton', !!(await until(async () => (await bar(`!document.getElementById('servers').hidden`)) || null, 4000, 100)));
+    check('Icône des serveurs : la marque suit le pire état (échec)', !!(await until(async () => (await bar(`document.getElementById('servers-mark').classList.contains('failed')`)) || null, 4000, 100)));
+    check('Icône des serveurs : la barre ne reçoit que le résumé, pas la liste', await bar(`current.servers.items === undefined && current.servers.count === 4`));
+    check('Icône des serveurs : étiquette lisible pour l\'accessibilité', /4 app/.test(await bar(`document.getElementById('servers').getAttribute('aria-label')`)));
+
+    await flyout.open('servers', { x: 800, right: 840 });
+    check('Volet des serveurs : ouvert sous la barre', flyout.isOpen() && flyout._kind() === 'servers');
+    const text = await until(async () => { const t = await panel(`document.getElementById('panel').innerText`); return /Dernier déploiement échoué/.test(t) ? t : null; }, 4000, 100);
+    check('Volet : les quatre statuts sont écrits en mots', !!text && /En ligne/.test(text) && /En déploiement/.test(text) && /Dernier déploiement échoué/.test(text) && /Inconnu/.test(text), text);
+    const low = (text || '').toLowerCase(); // les titres de groupe sont mis en capitales par le style
+    check('Volet : groupé par client, puis « Non rattachées »', low.indexOf('acme') >= 0 && low.indexOf('acme') < low.indexOf('non rattachées') && low.indexOf('api') < low.indexOf('non rattachées') && low.indexOf('site') > low.indexOf('non rattachées'), text);
+    check('Volet : chaque statut a une forme en plus de la couleur', (await panel(`[...document.querySelectorAll('.srow .sd')].map((n) => [...n.classList].find((c) => ['online','deploying','failed','unknown'].includes(c))).sort().join()`)) === 'deploying,failed,online,unknown');
+
+    // Vitrine : le volet ne montre ni nom d'app ni projet hors du client affiché
+    state.vitrine = true; await tabs.switchSpace('globex');
+    const masked = await until(async () => { const t = await panel(`document.getElementById('panel').innerText`); return /App masquée/.test(t) ? t : null; }, 4000, 100);
+    check('Volet en vitrine : « App masquée » à la place des noms', !!masked && !/api|site|worker|cron|Projet \d/.test(masked.replace(/Actualiser|Gérer les serveurs/g, '')), masked);
+    state.vitrine = false; await tabs.switchSpace('acme');
+    await until(async () => (/\bapi\b/.test(await panel(`document.getElementById('panel').innerText`))) || null, 4000, 100);
+
+    // Beaucoup d'apps : la liste défile, le volet ne dépasse pas la fenêtre
+    for (let i = 10; i < 70; i++) await admin['servers.observe'](mk(i, `app ${i}`));
+    await admin['servers.refresh']({});
+    await admin['servers.refresh']({});
+    await until(async () => (await panel(`document.querySelectorAll('.srow').length`)) >= 60 || null, 4000, 100);
+    await wait(150);
+    const scroll = await panel(`(() => { const l = document.querySelector('.srv-list'); return { sh: l.scrollHeight, ch: l.clientHeight, ov: getComputedStyle(l).overflowY }; })()`);
+    check('Volet : 64 apps, la liste défile', scroll.sh > scroll.ch && /auto|scroll/.test(scroll.ov), scroll);
+    check('Volet : le volet reste dans la fenêtre', flyout._view().getBounds().y + flyout._view().getBounds().height <= state.win.getContentBounds().height, flyout._view().getBounds());
+    await panel(`document.querySelector('.srv-list').scrollTop = 120`);
+    await admin['servers.refresh']({});
+    await wait(200);
+    check('Volet : un nouveau relevé garde la position de défilement', (await panel(`document.querySelector('.srv-list').scrollTop`)) === 120);
+    check('Volet : le geste Actualiser est autorisé et laisse le volet ouvert', (await flyout._act('servers-refresh', []), flyout.isOpen()));
+    flyout.close();
+
+    // Vide : message et accès aux Réglages (même quand la page Réglages n'est pas encore ouverte)
+    for (const it of tabs.snapshot().servers.items) await admin['servers.unobserve']({ id: it.id });
+    for (const t of [...state.tabs.values()].filter((x) => x.internal === 'settings')) await tabs.closeTab(t.id);
+    await flyout.open('servers', { x: 800, right: 840 });
+    const empty = await until(async () => { const t = await panel(`document.getElementById('panel').innerText`); return /Aucune app observée/.test(t) ? t : null; }, 4000, 100);
+    check('Volet vide : il dit comment ajouter une app', !!empty);
+    await flyout._act('open-settings', ['servers']);
+    const tab = await until(() => [...state.tabs.values()].find((t) => t.internal === 'settings') || null, 4000, 100);
+    await loaded(tab);
+    check('Réglages ouverts depuis le volet : directement sur « Serveurs »', !!(await until(async () => ((await ev(tab, `document.querySelector('#content h1')?.textContent`).catch(() => null)) === 'Serveurs' ? 1 : null), 5000, 150)));
+    await tabs.closeTab(tab.id);
+    await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: null });
+    check('Icône des serveurs : cachée de nouveau sans jeton', !!(await until(async () => (await bar(`document.getElementById('servers').hidden`)) || null, 4000, 100)));
+    servers.stop();
+  });
+
   await section('Page Réglages et navigation rapide', async () => {
     await tabs.openInternal('settings');
     const tab = [...state.tabs.values()].find((t) => t.internal === 'settings');
     await loaded(tab);
     const nav = await until(async () => { const n = await ev(tab, `document.querySelectorAll('#nav button').length`).catch(() => 0); return n || null; });
-    check('Page Réglages chargée avec ses sections', nav === 9, nav);
+    check('Page Réglages chargée avec ses sections', nav === 10, nav);
     check('API d\'administration disponible dans la page interne', (await ev(tab, `window.junrAdmin.call('all').then((m) => m.clients.length)`)) >= 2);
     check('Page interne non navigable', tab.view.webContents.getLastWebPreferences().sandbox === true);
     const failures = [];
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 10; i++) {
       await ev(tab, `document.querySelectorAll('#nav button')[${i}].click()`);
       const h1 = await until(async () => (await ev(tab, `document.querySelector('#content h1')?.textContent`)) || null, 4000, 150);
       const toastErr = await ev(tab, `document.getElementById('toast').classList.contains('err')`);
       if (!h1 || toastErr) failures.push({ i, h1, toast: await ev(tab, `document.getElementById('toast').textContent`) });
     }
-    check('Les 9 sections s\'affichent sans erreur', failures.length === 0, failures);
+    check('Les 10 sections s\'affichent sans erreur', failures.length === 0, failures);
     await ev(tab, `document.querySelectorAll('#nav button')[0].click()`);
     await tabs.closeTab(tab.id);
 

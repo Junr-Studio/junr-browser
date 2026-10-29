@@ -7,7 +7,7 @@ const { WebContentsView, ipcMain } = require('electron');
 const { state, TOPBAR_H } = require('./state');
 
 const PAD = 10;                                  // marge transparente à gauche, à droite et en bas (ombre du volet)
-const WIDTH = { clients: 340, extensions: 320 }; // largeur du volet
+const WIDTH = { clients: 340, extensions: 320, servers: 380 }; // largeur du volet
 const LEAVE_MS = 240;                            // temps laissé pour passer de l'icône au volet sans le fermer
 
 let view = null;
@@ -47,7 +47,7 @@ function reposition() {
   if (!view || !kind || !state.win) return;
   const { width: W, height: H } = bounds();
   const w = (WIDTH[kind] || 320) + 2 * PAD;
-  const want = kind === 'extensions' && anchor ? anchor.right - w + PAD : (anchor ? anchor.x - PAD : 0);
+  const want = (kind === 'extensions' || kind === 'servers') && anchor ? anchor.right - w + PAD : (anchor ? anchor.x - PAD : 0);
   const x = Math.max(0, Math.min(want, W - w));
   view.setBounds({ x, y: TOPBAR_H, width: w, height: Math.max(40, Math.min(height + PAD, H - TOPBAR_H - 4)) });
 }
@@ -144,7 +144,7 @@ function register() {
 }
 
 const tabs = () => require('./tabs');
-const keepOpen = new Set(['toggle-vitrine', 'ext-pin', 'group-menu']);
+const keepOpen = new Set(['toggle-vitrine', 'ext-pin', 'group-menu', 'servers-refresh']);
 // La page ne reprend pas le clavier quand le geste ouvre sa propre fenêtre (un popup d'extension se refermerait aussitôt).
 const noRefocus = new Set(['ext-action', 'ext-context']);
 // Gestes autorisés depuis un volet (liste fermée). Sauf mention contraire, le volet se referme et la page reprend le clavier.
@@ -161,6 +161,7 @@ const actions = {
   'pick-space': () => tabs().pickSpace(),
   'update-install': () => require('./updater').install(),
   'open-settings': (section) => tabs().openInternal('settings', section || null),
+  'servers-refresh': () => require('./servers').refresh(),
   'ext-action': (id) => require('./extensions/actions').click(String(id), undefined, anchor ? anchor.right : 0),
   'ext-pin': (id, pinned) => require('./spaces').pinExtension(String(id), !!pinned),
   'ext-context': (id, x, y) => { const b = view ? view.getBounds() : { x: 0, y: 0 }; return require('./extensions/actions').contextMenu(String(id), b.x + (Number(x) || 0), b.y + (Number(y) || 0)); },

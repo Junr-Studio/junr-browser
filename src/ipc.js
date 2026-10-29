@@ -15,6 +15,7 @@ const dialog = require('./dialog');
 const groupui = require('./groupui');
 const flyout = require('./flyout');
 const relay = require('./relay');
+const servers = require('./servers');
 const extManager = require('./extensions/manager');
 const popup = require('./extensions/popup');
 
@@ -86,6 +87,14 @@ const admin = {
   'pw.save': (a) => native.savePassword(a),
   'pw.delete': (a) => native.deletePassword(a.id),
 
+  'servers.config': () => servers.config(),
+  'servers.setSecret': (a) => servers.setSecret(String(a.provider), String(a.key), a.value === null ? null : String(a.value ?? '')),
+  'servers.browse': (a) => servers.browse(String(a.provider), Array.isArray(a.path) ? a.path.map(String) : []),
+  'servers.observe': (a) => servers.observe({ provider: String(a.provider), ref: a.ref, label: a.label, project: a.project }),
+  'servers.unobserve': (a) => servers.unobserve(String(a.id)),
+  'servers.assign': (a) => servers.assign(String(a.id), a.clientId ? String(a.clientId) : null),
+  'servers.refresh': () => servers.refresh(),
+
   'share.me': () => share.myShareId(),
   'share.preview': (a) => share.previewExport(a.spaceId),
   'share.check': (a) => share.checkSpacePortability(a.spaceId),
@@ -143,12 +152,13 @@ const summary = (o) => ({ statuses: o.statuses, expiresAt: o.expiresAt, cookies:
 
 function register() {
   flyout.register();
+  require('./extensions/webstore').register({ install: (id) => extManager.install(id), notify: (text, ms) => tabs.notify(text, ms) });
   shellHandle('switch-space', (id) => tabs.switchSpace(id));
   shellHandle('select-tab', (id) => tabs.activateTab(id));
   shellHandle('close-tab', (id) => tabs.closeTab(id));
   shellHandle('new-tab', () => tabs.newTab());
   shellHandle('navigate', (input) => tabs.navigate(String(input)));
-  shellHandle('get-state', () => tabs.snapshot());
+  shellHandle('get-state', () => tabs.barSnapshot());
   shellHandle('open-settings', (section) => tabs.openInternal('settings', section));
   shellHandle('address-input', (text) => require('./extensions/bridge/api-omnibox').typing(state.activeSpace, String(text)));
   shellHandle('pick-space', () => tabs.pickSpace());

@@ -1,7 +1,7 @@
 'use strict';
 // Menu contextuel des pages : entrées usuelles du navigateur + entrées déclarées par les extensions du client (chrome.contextMenus).
 const { Menu, clipboard } = require('electron');
-const { state } = require('./state');
+const { state, SEARCH_URL } = require('./state');
 
 function show(tab, wc, params) {
   const tabs = require('./tabs');
@@ -26,7 +26,7 @@ function show(tab, wc, params) {
   } else if (params.selectionText) {
     const q = params.selectionText.trim().slice(0, 40);
     t.push({ label: 'Copier', role: 'copy' },
-      { label: `Rechercher « ${q} »`, click: () => open(`https://duckduckgo.com/?q=${encodeURIComponent(params.selectionText.trim())}`) });
+      { label: `Rechercher « ${q} »`, click: () => open(SEARCH_URL + encodeURIComponent(params.selectionText.trim())) });
   } else if (!params.linkURL) {
     const h = wc.navigationHistory;
     t.push({ label: 'Retour', enabled: h.canGoBack(), click: () => h.goBack() }, { label: 'Avancer', enabled: h.canGoForward(), click: () => h.goForward() },

@@ -1,6 +1,6 @@
 {
   "name": "junr-browser",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "Navigateur multi-clients Junr : espaces étanches, outils communs, extensions du Web Store, mise en veille, partage d'espace",
   "author": "Junr Studio",
   "homepage": "https://github.com/Junr-Studio/junr-browser",
@@ -15,7 +15,11 @@
     "phase0:persistence": "node scripts/phase0-persistence.js",
     "measure:ram": "node scripts/run.js scripts/measure-ram.js",
     "dist": "electron-builder --win --publish never",
-    "dist:dir": "electron-builder --win --dir --publish never"
+    "dist:dir": "electron-builder --win --dir --publish never",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:smoke": "node test/run.js --only POC",
+    "test:e2e": "node test/run.js --only \"^(?!Pont d'API|Barre unique)\"",
+    "test:desktop": "node test/run.js --only \"Pont d'API|Barre unique\""
   },
   "dependencies": {
     "electron-updater": "^6.8.11"
@@ -30,7 +34,9 @@
     "appId": "studio.junr.browser",
     "productName": "Junr Browser",
     "artifactName": "Junr-Browser-Setup-${version}.${ext}",
-    "directories": { "output": "dist" },
+    "directories": {
+      "output": "dist"
+    },
     "asar": false,
     "files": [
       "main.js",
@@ -39,15 +45,30 @@
       "src/**/*",
       "shell/**/*",
       "extensions/**/*",
+      "assets/icon.png",
+      "!extensions/junr-demo/**",
       "!**/*.md",
       "!**/*.map"
     ],
     "publish": [
-      { "provider": "github", "owner": "Junr-Studio", "repo": "junr-browser", "releaseType": "prerelease" }
+      {
+        "provider": "github",
+        "owner": "Junr-Studio",
+        "repo": "junr-browser",
+        "releaseType": "prerelease"
+      }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "signAndEditExecutable": false
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": true
     },
     "nsis": {
       "oneClick": true,

@@ -1,0 +1,245 @@
+{
+  "version": 5,
+  "layers": {
+    "1": [],
+    "2": [
+      "src/**",
+      "server/**"
+    ],
+    "3": [
+      "shell/**"
+    ],
+    "4": [
+      "main.js"
+    ]
+  },
+  "testPatterns": [
+    "test/**"
+  ],
+  "tddExempt": [
+    "**/*.json",
+    "**/*.yml",
+    "**/*.css",
+    "**/*.html",
+    "scripts/**",
+    "docs/**",
+    "extensions/**",
+    "**/*.d.ts",
+    "**/generated/**"
+  ],
+  "cycleDocPatterns": [
+    "docs/cycle/**",
+    ".junr/**",
+    "**/*.md"
+  ],
+  "verify": {
+    "test": "npm run --silent test"
+  },
+  "maxReviewRounds": 5,
+  "attendance": [
+    {
+      "skill": "junr-dev-method:cycle-brainstorm",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "docs/cycle/*/01-brief.md"
+        ]
+      },
+      "why": "Le brief se cadre AVEC l'utilisateur, par élicitation. Un brief écrit seul est une supposition mise en forme."
+    },
+    {
+      "skill": "junr-dev-method:cycle-prd",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "docs/cycle/*/02-prd.md"
+        ]
+      },
+      "why": "Le PRD se calibre sur le palier du cycle. Un PRD de trois pages sur un ticket d'une ligne est un défaut, pas de la rigueur."
+    },
+    {
+      "skill": "junr-dev-method:cycle-architecture",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "docs/cycle/*/03-architecture.md"
+        ]
+      },
+      "why": "Les frontières et les ADR sont des décisions, pas un gabarit à remplir."
+    },
+    {
+      "skill": "junr-dev-method:observability-contract",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "docs/cycle/*/04-observability.md"
+        ]
+      },
+      "why": "Ce qui devra être observable se décide en phase 3a, pas après l'incident. Le gate de promotion vérifie que le contrat existe, jamais qu'il couvre les bons signaux."
+    },
+    {
+      "skill": "junr-dev-method:cycle-requirements",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "docs/cycle/*/requirements/**"
+        ]
+      },
+      "why": "Un requirement est atomique et autoportant, avec ses test cases et sa décomposition en couches. Découpé au jugé, il produit des tâches qui se chevauchent et un dev qui repart lire le PRD."
+    },
+    {
+      "skill": "junr-dev-method:tdd-discipline",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "**/*.js"
+        ],
+        "state": {
+          "file": ".junr/cycle.json",
+          "key": "phase",
+          "in": [
+            4
+          ]
+        }
+      },
+      "unless": {
+        "paths": [
+          "**/*.d.ts",
+          "**/*.config.*",
+          "**/generated/**"
+        ]
+      },
+      "why": "En phase 4 le test s'écrit avant le code. Le gate TDD refuse le code sans test ; ce skill dit comment écrire le test qui en vaut la peine."
+    },
+    {
+      "skill": "junr-dev-method:implementation-order",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "**/*.js"
+        ],
+        "state": {
+          "file": ".junr/cycle.json",
+          "key": "phase",
+          "in": [
+            4
+          ]
+        }
+      },
+      "unless": {
+        "paths": [
+          "**/*.d.ts",
+          "**/*.config.*",
+          "**/generated/**"
+        ]
+      },
+      "why": "L'ordre migration & actions → logique → UI → intégration, et la boucle qui reverdit la chaîne entière à chaque avancée. Le gate d'ordre refuse une couche en avance ; il ne dit ni par quoi commencer, ni quand passer à la suivante."
+    },
+    {
+      "skill": "junr-dev-method:git-flow",
+      "when": {
+        "tools": [
+          "Bash"
+        ],
+        "command": "^\\s*git\\s+(commit|push)\\b"
+      },
+      "why": "Convention de commit, découpage, et ce qu'on ne pousse jamais. Le gate git vérifie la chaîne verte et les secrets, pas la forme du message."
+    },
+    {
+      "skill": "junr-dev-method:release-promotion",
+      "when": {
+        "tools": [
+          "Bash"
+        ],
+        "command": "^\\s*(git\\s+tag|git\\s+push\\s+(--tags|--follow-tags)|(npm|pnpm|yarn)\\s+version|gh\\s+release|(npx\\s+)?changeset\\s+publish)\\b"
+      },
+      "why": "Couper une release puis promouvoir l'artefact est une séquence, pas un geste. Le gate de release vérifie que le cycle est vert, jamais que l'enchaînement commit → PR → merge → tag → promotion est respecté."
+    },
+    {
+      "skill": "junr-dev-method:ci-discipline",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          ".github/workflows/**",
+          ".gitlab-ci.yml",
+          ".gitlab/ci/**",
+          ".circleci/**",
+          "azure-pipelines.yml",
+          "Jenkinsfile",
+          ".buildkite/**",
+          "bitbucket-pipelines.yml",
+          ".woodpecker/**",
+          "**/*.pipeline.yml"
+        ]
+      },
+      "why": "Un pipeline se juge sur ce que son vert recouvre. Le gate de parité vérifie que chaque étape de `verify` est rejouée ; il ne voit ni le job sauté, ni la suite filtrée, ni l'artefact d'échec qui manque, et c'est là que le vert ment."
+    },
+    {
+      "skill": "junr-dev-method:branch-protection",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "**/CODEOWNERS",
+          ".github/settings.yml",
+          ".github/branch-protection*",
+          "**/*.tf",
+          "**/*.tfvars"
+        ]
+      },
+      "why": "Ce qui protège la branche par défaut vit chez la forge, pas dans le repo : la déclaration locale ne prouve rien. Le gate de forge refuse le push direct et le force-push qu'il voit passer ; il ne peut vérifier ni les approbations, ni l'historique linéaire, ni qu'un administrateur peut contourner."
+    },
+    {
+      "skill": "junr-dev-method:branch-protection",
+      "on": "bash",
+      "when": {
+        "tools": [
+          "Bash"
+        ],
+        "command": "^\\s*git\\s+(push|branch|tag)\\b.*(--force|--force-with-lease|-f\\b|--delete|-D\\b)|^\\s*gh\\s+(api|repo\\s+edit|ruleset)\\b"
+      },
+      "why": "Toucher à ce qui régit la branche par défaut ou les tags de release est une décision de gouvernance, pas un geste git. Le gate de forge refuse ce qu'il observe en local ; ce qui vit côté serveur reste déclaratif, donc signalé."
+    },
+    {
+      "skill": "junr-dev-method:cycle-review-loop",
+      "on": "stop",
+      "when": {
+        "state": {
+          "file": ".junr/cycle.json",
+          "key": "phase",
+          "in": [
+            5
+          ]
+        }
+      },
+      "why": "La revue boucle sur quatre axes et ne produit pas forcément d'écriture : la fin de tour est le seul moment vérifiable. Rendre une phase 5 rouge sans le dire est un échec de la méthode."
+    }
+  ],
+  "attendanceVersion": 2
+}

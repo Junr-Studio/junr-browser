@@ -13,6 +13,7 @@ const path = require('node:path');
 const { ipcMain } = require('electron');
 const { state } = require('../../state');
 const { matchPattern, isHostPattern } = require('./match');
+const { bindWorkerCalls } = require('./worker-calls');
 
 const PRELOAD = path.join(__dirname, 'preload.js');
 const SHIM_SOURCE = path.join(__dirname, '..', 'sw-shim.js');
@@ -155,6 +156,7 @@ function attachSession(ses, spaceId) {
   ses.registerPreloadScript({ type: 'service-worker', filePath: PRELOAD });
   ses.registerPreloadScript({ type: 'frame', filePath: PRELOAD });
   ses.registerPreloadScript({ type: 'frame', filePath: USERSCRIPTS_PRELOAD });
+  require('../webstore').attachSession(ses);
   for (const mod of Object.values(load())) mod.onSession?.(ses, spaceId, { emit });
   const byVersion = new Map();
   ses.serviceWorkers.on('running-status-changed', ({ versionId, runningStatus }) => {
@@ -172,7 +174,7 @@ function attachSession(ses, spaceId) {
     const conn = addConn({ kind: 'sw', extId: m[1], spaceId, ses, worker, send: (msg) => { if (!worker.isDestroyed()) worker.send('junr:event', msg); } });
     byVersion.set(versionId, conn);
     // Le gestionnaire doit exister avant l'exécution du script : on l'enregistre dès l'état « starting ».
-    worker.ipc.handle('junr:call', (e, p, a) => handleCall(conn, p, a));
+    bindWorkerCalls(worker, conn, handleCall);
   });
 }
 
@@ -217,6 +219,28 @@ function request(name, args, opts = {}) {
     setTimeout(() => { const w = replies.get(id); if (w && !opts.__sent && !hasTarget(name, opts)) { clearTimeout(w.timer); replies.delete(id); resolve(undefined); } }, 50);
   });
 }
+// Électron donne un identifiant d'onglet à toute vue : le popup d'une extension se présente donc à son service worker avec un
+// `sender.tab`, ce que Chrome ne fait jamais (Passbolt s'en sert pour le reconnaître, et son popup reste vide sinon). On annonce
+// ici l'identifiant du popup, le shim du service worker retire `tab` des expéditeurs qui le portent. Réveille le worker s'il dort.
+async function popupTab(spaceId, extId, tabId) {
+  if (!manifestOf(extId)?.manifest.background?.service_worker) return false; // sans service worker, personne à prévenir
+  const key = keyOf(spaceId, extId);
+  const find = () => [...conns].find((c) => c.kind === 'sw' && c.key === key && c.ready);
+  if (!find()) {
+    try { await state.sessions.get(spaceId)?.ses.serviceWorkers.startWorkerForScope(`chrome-extension://${extId}/`); }
+    catch { /* pas de service worker à démarrer : le popup s'ouvre quand même */ }
+    for (let i = 0; i < 30 && !find(); i++) await new Promise((r) => setTimeout(r, 100));
+  }
+  const conn = find();
+  if (!conn) return false;
+  return new Promise((resolve) => {
+    const id = `r${++replySeq}`;
+    const timer = setTimeout(() => { replies.delete(id); resolve(false); }, 2000);
+    replies.set(id, { resolve: (v) => resolve(!!v), timer });
+    deliver(conn, 'runtime.$popupTab', [tabId], id);
+  });
+}
+
 function hasTarget(name, { spaceId, extId }) {
   for (const c of conns) if ((spaceId === undefined || c.spaceId === spaceId) && (!extId || c.extId === extId) && c.subs.has(name)) return true;
   for (const [key, names] of known) { const [sp, ex] = key.split('|'); if (names.has(name) && (spaceId === undefined || sp === String(spaceId)) && (!extId || ex === extId)) return true; }
@@ -280,4 +304,4 @@ function forget(extId) {
 // Extensions dont le service worker (ou une page) est connecté et abonné, pour les tests et le diagnostic.
 const connections = () => [...conns].map((c) => ({ kind: c.kind, extId: c.extId, spaceId: c.spaceId, subs: [...c.subs] }));
 
-module.exports = { install, attachSession, emit, request, emitAll, forget, invalidate, shimSource, spec, load, manifestOf, makeCtx, connections, UNSUPPORTED };
+module.exports = { install, attachSession, emit, request, popupTab, emitAll, forget, invalidate, shimSource, spec, load, manifestOf, makeCtx, connections, UNSUPPORTED };

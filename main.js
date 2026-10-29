@@ -12,6 +12,8 @@ app.userAgentFallback = app.userAgentFallback.replace(/ (Electron|junr-browser)\
 const MODE = process.env.JUNR_TEST ? 'test' : process.env.JUNR_SCRIPT ? 'script' : null;
 // JUNR_USER_DATA permet de relancer un mode automatique sur les mêmes données (tests de redémarrage).
 if (MODE) app.setPath('userData', process.env.JUNR_USER_DATA || fs.mkdtempSync(path.join(os.tmpdir(), 'junr-run-')));
+// Les runners d'intégration continue n'ont pas de GPU : le processus GPU y plante ou cale parfois et fige le processus principal.
+if (MODE === 'test' && process.env.CI) app.disableHardwareAcceleration();
 
 const { state, TOPBAR_H } = require('./src/state');
 const { Store } = require('./src/store');
@@ -36,6 +38,8 @@ app.on('web-contents-created', (e, contents) => {
 if (!MODE && !app.requestSingleInstanceLock()) app.quit();
 
 function seedConfig(diagUrl) {
+  // Version installée : aucun client de démonstration, la personne crée les siens dans Réglages.
+  if (app.isPackaged) return { unloadAfterMs: 300000, clients: [], globalTools: [] };
   const raw = fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8');
   return JSON.parse(raw);
 }
@@ -46,7 +50,7 @@ async function start(seed) {
   Menu.setApplicationMenu(null);
   // Une seule barre en haut sert aussi de barre de titre : les boutons du système se posent par-dessus (même hauteur que la barre).
   state.win = new BaseWindow({
-    width: 1360, height: 860, minWidth: 900, minHeight: 560, title: 'Junr Browser',
+    width: 1360, height: 860, minWidth: 900, minHeight: 560, title: 'Junr Browser', icon: path.join(__dirname, 'assets', 'icon.png'),
     titleBarStyle: 'hidden', titleBarOverlay: { color: '#111a25', symbolColor: '#d5dce6', height: TOPBAR_H },
   });
   state.shell = new WebContentsView({
@@ -93,6 +97,7 @@ app.whenReady().then(async () => {
   } else {
     await start(seedConfig(state.diagUrl));
     require('./src/updater').start().catch((e) => console.error('Mises à jour :', e.message));
+    require('./src/servers').start();
   }
 });
 app.on('window-all-closed', () => app.quit());

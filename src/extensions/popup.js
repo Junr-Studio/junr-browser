@@ -13,10 +13,26 @@ let autoClose = true; // les mesures automatiques (fenêtre sans focus) désacti
 
 const isOpen = () => !!view;
 
+// chrome.action.setPopup : une extension (Passbolt, une fois configurée) choisit son popup à l'exécution, sans default_popup dans le manifeste.
+const overrides = new Map(); // extId → chemin dans l'extension ('' : plus de popup)
+const clean = (p) => String(p || '').replace(/^chrome-extension:\/\/[a-p]{32}\//, '').replace(/^\//, '');
+function setPopup(id, popup) { overrides.set(id, clean(popup)); }
+// Popup à ouvrir pour cette extension : celui posé à l'exécution, sinon celui du manifeste.
+function pathFor(id) {
+  if (overrides.has(id)) return overrides.get(id) || null;
+  const rec = manager.records()[id];
+  return (rec && manager.popupPath(rec)) || null;
+}
+
+// Une extension qui ouvre son popup elle-même (chrome.action.openPopup, depuis son service worker) ne sait pas où est son icône :
+// on retient le bord droit du dernier clic sur celle-ci, sinon le popup se colle au bord droit de la fenêtre, côté barre d'extensions.
+const anchors = new Map(); // extId → bord droit de son icône, en pixels de la fenêtre
+function noteAnchor(id, x) { if (x > 0) anchors.set(id, x); }
+
 function reposition() {
   if (!view || !state.win) return;
   const { width, height } = state.win.getContentBounds();
-  const x = Math.max(SIDEBAR_W, Math.min(anchorX - W + 30, width - W - 8));
+  const x = Math.max(SIDEBAR_W, Math.min((anchorX || width) - W + 30, width - W - 8));
   view.setBounds({ x, y: TOPBAR_H, width: W, height: Math.min(H, height - TOPBAR_H - 8) });
 }
 
@@ -31,15 +47,20 @@ function close() {
 async function toggle(id, x = 0) {
   if (view && extId === id) { close(); return false; }
   close();
-  const rec = manager.records()[id];
-  const rel = rec && manager.popupPath(rec);
+  const rel = pathFor(id);
   if (!rel) return false;
   const tab = state.tabs.get(state.activeTab);
-  const entry = state.sessions.get(tab?.spaceId || state.activeSpace);
+  const spaceId = tab?.spaceId || state.activeSpace;
+  const entry = state.sessions.get(spaceId);
   if (!entry) return false;
   await entry.ready;
+  noteAnchor(id, x);
   view = new WebContentsView({ webPreferences: { session: entry.ses, contextIsolation: true, nodeIntegration: false, sandbox: true } });
-  extId = id; anchorX = x;
+  extId = id; anchorX = anchors.get(id) || 0;
+  // Le service worker doit savoir, avant que la page ne se connecte, que cette vue est un popup et non un onglet.
+  const mine = view;
+  await require('./bridge').popupTab(spaceId, id, mine.webContents.id);
+  if (view !== mine) { if (!mine.webContents.isDestroyed()) mine.webContents.close(); return false; } // refermé ou remplacé pendant l'attente
   view.setBackgroundColor('#ffffff');
   state.win.contentView.addChildView(view);
   reposition();
@@ -51,4 +72,4 @@ async function toggle(id, x = 0) {
   return true;
 }
 
-module.exports = { toggle, close, reposition, isOpen, _view: () => view, _setAutoClose: (v) => { autoClose = v; } };
+module.exports = { toggle, close, setPopup, pathFor, noteAnchor, reposition, isOpen, _view: () => view, _setAutoClose: (v) => { autoClose = v; } };

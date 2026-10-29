@@ -1,6 +1,6 @@
 'use strict';
 // chrome.windows : Junr Browser n'a qu'une fenêtre (identifiant 0, comme dans tabs.query natif d'Electron).
-const { state, bus } = require('../../state');
+const { state, bus, HOME_URL } = require('../../state');
 const model = require('./model');
 
 const isCurrent = (id) => id === undefined || id === null || id === model.WINDOW_ID || id === -2;
@@ -21,7 +21,7 @@ module.exports = {
     // Une « nouvelle fenêtre » ouvre ses adresses dans de nouveaux onglets du client : il n'y a qu'une fenêtre.
     async create(ctx, data = {}) {
       const urls = [].concat(data.url || []);
-      if (!urls.length) urls.push('https://duckduckgo.com');
+      if (!urls.length) urls.push(HOME_URL);
       let first = true;
       for (const url of urls) { await model.createTab(ctx, { url, active: first && data.focused !== false }); first = false; }
       return model.windowInfo(ctx, true);
