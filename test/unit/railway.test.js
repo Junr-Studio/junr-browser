@@ -24,10 +24,11 @@ function fakeFetch(handlers, { status = 200, retryAfter = null } = {}) {
   return f;
 }
 const edges = (nodes) => ({ edges: nodes.map((node) => ({ node })) });
-const deployments = (statuses) => ({ deployments: edges(statuses.map((status, i) => ({ id: `d${i}`, status, createdAt: '2026-01-01T00:00:00Z' }))) });
-const ref = { projectId: 'p', environmentId: 'e', serviceId: 's' };
+// Un environnement dont chaque service a le dernier déploiement donné (null : aucun déploiement).
+const instances = (statuses) => ({ environment: { id: 'e', serviceInstances: { edges: statuses.map((status, i) => ({ node: { serviceId: `s${i}`, serviceName: `svc${i}`, latestDeployment: status ? { id: `d${i}`, status } : null } })), pageInfo: { hasNextPage: false, endCursor: null } } } });
+const ref = { projectId: 'p', environmentId: 'e' };
 const stateFor = async (statuses) => {
-  const r = createRailway({ fetch: fakeFetch({ deployments: () => deployments(statuses) }) });
+  const r = createRailway({ fetch: fakeFetch({ serviceInstances: () => instances(statuses) }) });
   return (await r.statuses(creds, [ref]))[0];
 };
 
@@ -41,32 +42,95 @@ test('TC-002-3 : FAILED et CRASHED donnent failed', async () => {
   for (const s of ['FAILED', 'CRASHED']) assert.equal((await stateFor([s])).state, 'failed', s);
 });
 
-test('TC-002-4 : REMOVED, REMOVING, SKIPPED sont ignorés', async () => {
-  assert.equal((await stateFor(['REMOVED', 'SUCCESS'])).state, 'online');
-  assert.equal((await stateFor(['SKIPPED', 'REMOVING', 'FAILED'])).state, 'failed');
-  assert.equal((await stateFor(['SKIPPED'])).state, 'unknown');
-  assert.equal((await stateFor([])).state, 'unknown');
-  assert.equal((await stateFor(['MYSTERY'])).state, 'unknown');
+test('TC-002-4 : REMOVED, REMOVING, SKIPPED, inconnu et aucun déploiement donnent unknown avec le statut brut', async () => {
+  for (const st of ['REMOVED', 'REMOVING', 'SKIPPED', 'MYSTERY']) {
+    const out = await stateFor([st]);
+    assert.equal(out.state, 'unknown', st);
+    assert.equal(out.apps[0].detail, st);
+  }
+  const none = await stateFor([null]);
+  assert.equal(none.apps[0].detail, 'Aucun déploiement');
+  assert.equal((await stateFor([])).detail, 'Aucun service');
 });
 
-test('TC-002-5 : parcours espaces, projets, apps ; liste tronquée à 200 projets', async () => {
-  const projects = Array.from({ length: 200 }, (_, i) => ({ id: `p${i}`, name: `Projet ${i}`, environments: edges([{ id: 'e1', name: 'production' }]), services: edges([{ id: 's1', name: 'api' }]) }));
-  const r = createRailway({ fetch: fakeFetch({ 'me {': () => ({ me: { workspaces: [{ id: 'w1', name: 'Acme' }] } }), 'projects(': () => ({ projects: edges(projects) }) }) });
-  assert.deepEqual(await r.browse(creds, []), [{ id: 'w1', name: 'Acme' }]);
-  const list = await r.browse(creds, ['w1']);
-  assert.equal(list.length, 201);
-  assert.equal(list[200].truncated, true);
-  const apps = await r.browse(creds, ['w1', 'p0']);
-  assert.deepEqual(apps, [{ id: 's1:e1', name: 'api (production)', app: { ref: { projectId: 'p0', environmentId: 'e1', serviceId: 's1' }, label: 'api (production)', project: 'Projet 0' } }]);
+const tree = (workspaces) => ({ me: { workspaces: workspaces.map((w) => ({ id: w.id, name: w.name, projects: edges(w.projects.map((p) => ({ id: p.id, name: p.name, deletedAt: p.deletedAt || null, environments: edges(p.envs.map((e) => ({ id: e.id, name: e.name, canAccess: e.canAccess !== false }))) }))) })) } });
+
+test('TC-1-1 : list rend une cible par environnement lisible, avec son chemin', async () => {
+  const f = fakeFetch({ 'me {': () => tree([
+    { id: 'w1', name: 'Acme', projects: [{ id: 'p1', name: 'Api', envs: [{ id: 'e1', name: 'production' }, { id: 'e2', name: 'staging' }, { id: 'e3', name: 'secret', canAccess: false }] }, { id: 'p2', name: 'Vieux', deletedAt: '2026-01-01', envs: [{ id: 'e9', name: 'production' }] }] },
+    { id: 'w2', name: 'Perso', projects: [{ id: 'p3', name: 'Site', envs: [{ id: 'e4', name: 'production' }] }] },
+  ]) });
+  const out = await createRailway({ fetch: f }).list(creds);
+  assert.deepEqual(out.targets.map((t) => t.ref), [{ projectId: 'p1', environmentId: 'e1' }, { projectId: 'p1', environmentId: 'e2' }, { projectId: 'p3', environmentId: 'e4' }]);
+  assert.deepEqual(out.targets[0].path, [{ id: 'w1', name: 'Acme', kind: 'workspace' }, { id: 'p1', name: 'Api', kind: 'project' }, { id: 'e1', name: 'production', kind: 'environment' }]);
+  assert.deepEqual(out.notes, []);
+});
+
+test('TC-1-2 : une erreur sur les espaces invités ne casse pas la liste et se dit', async () => {
+  const f = fakeFetch({ 'me {': () => tree([{ id: 'w1', name: 'Acme', projects: [{ id: 'p1', name: 'Api', envs: [{ id: 'e1', name: 'production' }] }] }]), externalWorkspaces: () => ({ __errors: [{ message: 'Not Authorized' }] }) });
+  const out = await createRailway({ fetch: f }).list(creds);
+  assert.equal(out.targets.length, 1);
+  assert.ok(out.notes.some((n) => /Espaces invités non lus/.test(n) && /Not Authorized/.test(n)));
+});
+
+test('TC-1-3 : les environnements des espaces invités sont des cibles', async () => {
+  const f = fakeFetch({
+    'me {': () => tree([]),
+    externalWorkspaces: () => ({ externalWorkspaces: [{ id: 'x1', name: 'Client invité', projects: [{ id: 'p7', name: 'Back', deletedAt: null, environments: edges([{ id: 'e7', name: 'production', canAccess: true }]) }] }] }),
+  });
+  const out = await createRailway({ fetch: f }).list(creds);
+  assert.equal(out.targets.length, 1);
+  assert.deepEqual(out.targets[0].path.map((n) => n.name), ['Client invité', 'Back', 'production']);
+});
+
+test('TC-1-4 : 500 projets dans un espace : la troncature se dit', async () => {
+  const projects = Array.from({ length: 500 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, envs: [{ id: `e${i}`, name: 'production' }] }));
+  const f = fakeFetch({ 'me {': () => tree([{ id: 'w1', name: 'Gros', projects }]) });
+  const out = await createRailway({ fetch: f }).list(creds);
+  assert.equal(out.targets.length, 500);
+  assert.ok(out.notes.some((n) => /tronquée aux 500 premiers projets de Gros/.test(n)));
+});
+
+test('TC-1-5 : les services d\'un environnement, avec leur état et leur adresse Railway', async () => {
+  const f = fakeFetch({ serviceInstances: () => instances(['SUCCESS', 'FAILED', null]) });
+  const [out] = await createRailway({ fetch: f }).statuses(creds, [{ projectId: 'p 1', environmentId: 'e1' }]);
+  assert.equal(out.state, 'failed', 'le pire des services');
+  assert.deepEqual(out.apps.map((a) => [a.name, a.state]), [['svc0', 'online'], ['svc1', 'failed'], ['svc2', 'unknown']]);
+  assert.equal(out.apps[0].url, 'https://railway.com/project/p%201/service/s0?environmentId=e1');
+  assert.equal(f.calls.length, 1, 'un seul appel pour tout l\'environnement');
+});
+
+test('TC-1-6 : plus de cent services : les pages suivantes sont demandées', async () => {
+  const page = (from, n, next) => ({ environment: { id: 'e', serviceInstances: { edges: Array.from({ length: n }, (_, i) => ({ node: { serviceId: `s${from + i}`, serviceName: `n${from + i}`, latestDeployment: { id: 'd', status: 'SUCCESS' } } })), pageInfo: { hasNextPage: !!next, endCursor: next } } } });
+  const afters = [];
+  const f = fakeFetch({ serviceInstances: (v) => { afters.push(v.after || null); return v.after ? page(100, 30, null) : page(0, 100, 'c1'); } });
+  const [out] = await createRailway({ fetch: f }).statuses(creds, [ref]);
+  assert.deepEqual(afters, [null, 'c1']);
+  assert.equal(out.apps.length, 130);
+});
+
+test('TC-1-6b : au-delà de dix pages, la cible dit qu\'elle est trop grande', async () => {
+  const f = fakeFetch({ serviceInstances: () => ({ environment: { id: 'e', serviceInstances: { edges: [{ node: { serviceId: 's', serviceName: 'n', latestDeployment: null } }], pageInfo: { hasNextPage: true, endCursor: 'c' } } } }) });
+  const [out] = await createRailway({ fetch: f }).statuses(creds, [ref]);
+  assert.equal(f.calls.length, 10);
+  assert.equal(out.state, 'unknown');
+  assert.match(out.detail, /Plus de 1000 services/);
+});
+
+test('TC-1-8 : un environnement introuvable est inconnu, avec son motif', async () => {
+  const f = fakeFetch({ serviceInstances: () => ({ environment: null }) });
+  const [out] = await createRailway({ fetch: f }).statuses(creds, [ref]);
+  assert.equal(out.state, 'unknown');
+  assert.equal(out.detail, 'Environnement introuvable');
 });
 
 test('TC-002-6 : jeton refusé, message sans le jeton', async () => {
   const r = createRailway({ fetch: fakeFetch({}, { status: 401 }) });
-  await assert.rejects(() => r.browse(creds, []), (e) => /jeton refusé/.test(e.message) && !e.message.includes(TOKEN));
+  await assert.rejects(() => r.list(creds), (e) => /jeton refusé/.test(e.message) && !e.message.includes(TOKEN));
 });
 
 test('TC-002-7 : erreur GraphQL ou réseau donne unknown avec le motif', async () => {
-  const gqlErr = createRailway({ fetch: fakeFetch({ deployments: () => ({ __errors: [{ message: 'Problem processing request' }] }) }) });
+  const gqlErr = createRailway({ fetch: fakeFetch({ serviceInstances: () => ({ __errors: [{ message: 'Problem processing request' }] }) }) });
   const a = (await gqlErr.statuses(creds, [ref]))[0];
   assert.equal(a.state, 'unknown');
   assert.match(a.detail, /Problem processing request/);
@@ -79,16 +143,16 @@ test('TC-002-7 : erreur GraphQL ou réseau donne unknown avec le motif', async (
 test('TC-002-8 : seules les requêtes figées partent, vers l\'adresse officielle', async () => {
   const f = fakeFetch({ 'me {': () => ({ me: { workspaces: [] } }) });
   const r = createRailway({ fetch: f });
-  await r.browse(creds, []);
+  await r.list(creds);
   assert.equal(f.calls[0].url, ENDPOINT);
   assert.equal(f.calls[0].init.method, 'POST');
   assert.equal(f.calls[0].init.headers.authorization, `Bearer ${TOKEN}`);
-  assert.ok(Object.values(QUERIES).includes(f.calls[0].body.query));
+  assert.ok(f.calls.every((c) => Object.values(QUERIES).includes(c.body.query)));
   assert.ok(Object.isFrozen(QUERIES));
   await assert.rejects(() => r._gql('nope', {}, creds), /requête inconnue/i);
-  await assert.rejects(() => createRailway({ fetch: f }).browse({}, []), /jeton/i);
+  await assert.rejects(() => createRailway({ fetch: f }).list({}), /jeton/i);
   assert.throws(() => createRailway({ fetch: f, endpoint: 'http://backboard.railway.com/graphql/v2' }), /HTTPS/);
-  assert.equal(f.calls.length, 1, 'aucune requête refusée n\'est partie');
+  assert.equal(f.calls.length, 2, 'les deux requêtes de la liste seulement (arbre, espaces invités) ; aucune requête refusée n\'est partie');
 });
 
 test('TC-002-8b : une requête qui contient mutation ou subscription est refusée avant envoi', async () => {
@@ -110,7 +174,7 @@ test('TC-002-9 : le source du fournisseur ne contient aucune écriture hors de l
 test('TC-002-10 : un message d\'erreur ne contient jamais le jeton', async () => {
   const f = fakeFetch({ 'me {': () => ({ __errors: [{ message: `Invalid token ${TOKEN}` }] }) });
   const r = createRailway({ fetch: f });
-  await assert.rejects(() => r.browse(creds, []), (e) => !e.message.includes(TOKEN));
+  await assert.rejects(() => r.list(creds), (e) => !e.message.includes(TOKEN));
 });
 
 test('B1 : un 429 coupe le relevé, repousse le prochain de Retry-After et n\'envoie plus rien', async () => {
@@ -135,26 +199,18 @@ test('B1 : un jeton refusé coupe le relevé aussi', async () => {
 });
 
 test('M2 : au-delà du budget de temps, les apps restantes sont inconnues sans requête', async () => {
-  const f = fakeFetch({ deployments: () => deployments(['SUCCESS']) });
+  const f = fakeFetch({ serviceInstances: () => instances(['SUCCESS']) });
   const out = await createRailway({ fetch: f }).statuses(creds, [ref, ref], { deadline: Date.now() - 1 });
   assert.equal(f.calls.length, 0);
   assert.ok(out.every((o) => o.state === 'unknown' && /délai/i.test(o.detail)));
 });
 
-test('M4 : la liste des projets d\'un espace n\'est demandée qu\'une fois par minute', async () => {
-  const projects = [{ id: 'p0', name: 'P', environments: edges([{ id: 'e1', name: 'prod' }]), services: edges([{ id: 's1', name: 'api' }]) }];
-  const f = fakeFetch({ 'projects(': () => ({ projects: edges(projects) }) });
-  const r = createRailway({ fetch: f });
-  await r.browse(creds, ['w1']); await r.browse(creds, ['w1', 'p0']); await r.browse(creds, ['w1', 'p0']);
-  assert.equal(f.calls.length, 1);
-});
-
 test('M5 : pas de redirection suivie, réponse trop volumineuse refusée', async () => {
   const f = fakeFetch({ 'me {': () => ({ me: { workspaces: [] } }) });
-  await createRailway({ fetch: f }).browse(creds, []);
+  await createRailway({ fetch: f }).list(creds);
   assert.equal(f.calls[0].init.redirect, 'error');
   const huge = createRailway({ fetch: fakeFetch({ 'me {': () => ({ __huge: true }) }) });
-  await assert.rejects(() => huge.browse(creds, []), /volumineuse/i);
+  await assert.rejects(() => huge.list(creds), /volumineuse/i);
 });
 
 test('une référence d\'app doit porter les trois identifiants', () => {
@@ -168,7 +224,7 @@ test('C2 : un seul délai dépassé ne coupe pas le relevé', async () => {
   const f = async (url, init) => {
     n++;
     if (n === 2) { const e = new Error('timeout'); e.name = 'TimeoutError'; throw e; }
-    const payload = { data: deployments(['SUCCESS']) };
+    const payload = { data: instances(['SUCCESS']) };
     return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify(payload) };
   };
   const out = await createRailway({ fetch: f }).statuses(creds, Array(8).fill(ref));
@@ -190,7 +246,7 @@ test('C2 : des échecs isolés entre deux succès ne coupent pas le relevé', as
   const f = async () => {
     n++;
     if (n % 3 === 0) return { ok: false, status: 502, headers: { get: () => null }, text: async () => '{}' };
-    return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: deployments(['SUCCESS']) }) };
+    return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: instances(['SUCCESS']) }) };
   };
   await createRailway({ fetch: f }).statuses(creds, Array(12).fill(ref));
   assert.equal(n, 12, 'un échec isolé de temps en temps ne coupe jamais le relevé');
@@ -199,26 +255,12 @@ test('C2 : des échecs isolés entre deux succès ne coupent pas le relevé', as
 test('sécurité : une réponse annonçant plus de 5 Mo est refusée sans être lue', async () => {
   let read = false;
   const f = async () => ({ ok: true, status: 200, headers: { get: (k) => (k.toLowerCase() === 'content-length' ? '9000000' : null) }, text: async () => { read = true; return '{}'; } });
-  await assert.rejects(() => createRailway({ fetch: f }).browse(creds, []), /volumineuse/i);
+  await assert.rejects(() => createRailway({ fetch: f }).list(creds), /volumineuse/i);
   assert.equal(read, false);
 });
 
-test('sécurité : le cache des projets ne garde jamais le jeton en clair', async () => {
-  const f = fakeFetch({ 'projects(': () => ({ projects: edges([]) }) });
-  const r = createRailway({ fetch: f });
-  await r.browse(creds, ['w1']);
-  assert.ok(r._cacheKeys().length === 1 && r._cacheKeys().every((k) => !k.includes(TOKEN)));
-});
-
-test('C8 : deux dépliages simultanés ne font qu\'une requête', async () => {
-  const f = fakeFetch({ 'projects(': () => ({ projects: edges([]) }) });
-  const r = createRailway({ fetch: f });
-  await Promise.all([r.browse(creds, ['w1']), r.browse(creds, ['w1'])]);
-  assert.equal(f.calls.length, 1);
-});
-
 test('M-b : des erreurs GraphQL répétées coupent aussi le relevé', async () => {
-  const f = fakeFetch({ deployments: () => ({ __errors: [{ message: 'Cannot query field' }] }) });
+  const f = fakeFetch({ serviceInstances: () => ({ __errors: [{ message: 'Cannot query field' }] }) });
   const out = await createRailway({ fetch: f }).statuses(creds, Array(30).fill(ref));
   assert.ok(f.calls.length < 30, `${f.calls.length} requêtes envoyées`);
   assert.ok(out.every((o) => o.state === 'unknown'));
@@ -228,13 +270,13 @@ test('sécurité : une réponse sans content-length est lue par morceaux et aban
   let chunks = 0, cancelled = false;
   const body = { getReader: () => ({ read: async () => { chunks++; return { done: false, value: new Uint8Array(1000 * 1000) }; }, cancel: async () => { cancelled = true; } }) };
   const f = async () => ({ ok: true, status: 200, headers: { get: () => null }, body });
-  await assert.rejects(() => createRailway({ fetch: f }).browse(creds, []), /volumineuse/i);
+  await assert.rejects(() => createRailway({ fetch: f }).list(creds), /volumineuse/i);
   assert.ok(cancelled && chunks <= 7, `${chunks} morceaux lus`);
 });
 
 test('sécurité : un JSON invalide ne cite pas le début de la réponse', async () => {
   const f = async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => `<html>${TOKEN}` });
-  await assert.rejects(() => createRailway({ fetch: f }).browse(creds, []), (e) => /illisible/.test(e.message) && !e.message.includes(TOKEN.slice(0, 5)));
+  await assert.rejects(() => createRailway({ fetch: f }).list(creds), (e) => /illisible/.test(e.message) && !e.message.includes(TOKEN.slice(0, 5)));
 });
 
 test('délai pendant la lecture du corps : même code qu\'un délai de requête', async () => {
@@ -248,14 +290,14 @@ const mixedFetch = (isBad) => {
   const calls = [];
   const f = async (url, init) => {
     const body = JSON.parse(init.body);
-    calls.push(body.variables.s);
-    const payload = isBad(body.variables.s) ? { errors: [{ message: 'Not Authorized' }] } : { data: deployments(['SUCCESS']) };
+    calls.push(body.variables.e);
+    const payload = isBad(body.variables.e) ? { errors: [{ message: 'Not Authorized' }] } : { data: instances(['SUCCESS']) };
     return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify(payload) };
   };
   f.calls = calls;
   return f;
 };
-const refOf = (s) => ({ projectId: 'p', environmentId: 'e', serviceId: s });
+const refOf = (e) => ({ projectId: 'p', environmentId: e });
 
 test('B1 (round 4) : quelques apps cassées en tête ne coupent pas le relevé des apps saines', async () => {
   const f = mixedFetch((s) => s.startsWith('bad'));
@@ -285,7 +327,7 @@ test('m4 (round 5) : des erreurs réseau répétées coupent le relevé comme de
   let n = 0;
   const f = async () => {
     n++;
-    if (n === 1) return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: deployments(['SUCCESS']) }) };
+    if (n === 1) return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: instances(['SUCCESS']) }) };
     throw new TypeError('fetch failed');
   };
   const out = await createRailway({ fetch: f }).statuses(creds, Array(40).fill(ref));
@@ -297,7 +339,7 @@ test('scalabilité (round 5) : sur un 429 les apps non tentées sont sautées et
   let n = 0;
   const f = async () => {
     n++;
-    if (n < 10) return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: deployments(['SUCCESS']) }) };
+    if (n < 10) return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: instances(['SUCCESS']) }) };
     return { ok: false, status: 429, headers: { get: (k) => (k.toLowerCase() === 'retry-after' ? '45' : null) }, text: async () => '{}' };
   };
   const out = await createRailway({ fetch: f }).statuses(creds, Array(40).fill(ref));
@@ -325,7 +367,7 @@ test('perf (round 5) : le motif des apps non tentées par la coupure « aucune r
 });
 
 // ---- Round 7 ----
-const okResponse = () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: deployments(['SUCCESS']) }) });
+const okResponse = () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ data: instances(['SUCCESS']) }) });
 const failing = (status) => ({ ok: false, status, headers: { get: () => null }, text: async () => '{}' });
 
 test('m-2 (round 6) : exactement trois échecs de suite coupent le relevé', async () => {
@@ -380,4 +422,9 @@ test('m-3 (round 7) : neuf apps cassées d\'affilée ne coupent pas le relevé, 
   const refs10 = [...Array(10).fill(0).map((_, i) => refOf(`bad${i}`)), ...Array(10).fill(0).map((_, i) => refOf(`ok${i}`))];
   const out10 = await createRailway({ fetch: f10 }).statuses(creds, refs10);
   assert.ok(out10.some((o) => o.skipped), 'dix échecs sans aucune réponse : relevé interrompu');
+});
+
+test('R2 : un 429 pendant la découverte garde son code et son délai', async () => {
+  const r = createRailway({ fetch: fakeFetch({}, { status: 429, retryAfter: '120' }) });
+  await assert.rejects(() => r.list(creds), (e) => e.code === 'rate' && e.backoffMs === 120000 && !/jeton de compte/.test(e.message));
 });

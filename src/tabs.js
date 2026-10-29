@@ -362,20 +362,15 @@ function shownName(id) {
   return hidden(cfg().clients[i]) ? `Client ${i + 1}` : cfg().clients[i].name;
 }
 
-// Serveurs observés. En vitrine, une app n'a plus ni nom ni projet sauf si elle est rattachée au client affiché : une app sans client,
-// ou d'un autre client, peut porter son nom (« acme-api »).
+// Serveurs observés. En vitrine, aucun nom ne sort : ni espace, ni projet, ni environnement, ni app (un nom peut désigner un client).
 function serversView() {
   const v = require('./servers').view();
   if (!state.vitrine) return v;
-  const items = v.items.map((i) => {
-    const c = i.clientId && cfg().clients.find((x) => x.id === i.clientId);
-    if (c && !hidden(c)) return i;
-    return { ...i, label: '', project: '', detail: '', clientName: c ? shownName(c.id) : null };
-  });
-  return { ...v, items };
+  const items = v.items.map((i) => ({ ...i, label: '', project: '', workspace: '', environment: '', detail: '' }));
+  return { ...v, items, notes: [] };
 }
 
-// La barre n'affiche que l'icône et sa marque : elle ne reçoit pas la liste des apps (jusqu'à 500 lignes à chaque envoi d'état).
+// La barre n'affiche que l'icône et sa marque : elle ne reçoit pas la liste des apps (jusqu'à 1000 lignes à chaque envoi d'état).
 const serversSummary = ({ items, ...summary }) => summary;
 const forBar = (s) => ({ ...s, servers: serversSummary(s.servers) });
 

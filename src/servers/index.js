@@ -29,7 +29,6 @@ function get() {
     store: { get servers() { return state.store.data.servers; }, save: () => state.store.save() },
     secrets,
     providers,
-    clients: () => state.store.data.clients.map((c) => ({ id: c.id, name: c.name })),
     onChange: () => { require('../tabs').push(); },
     log,
   });
@@ -37,17 +36,15 @@ function get() {
 }
 
 // Le snapshot de la barre est calculé très souvent : avant le démarrage du store, ou sans observateur, on rend un état vide sans rien créer.
-const EMPTY = Object.freeze({ configured: false, items: [], mark: 'none', count: 0, checkedAt: 0, waitUntil: 0 });
+const EMPTY = Object.freeze({ configured: false, items: [], mark: 'none', count: 0, checkedAt: 0, waitUntil: 0, notes: [] });
 const view = () => (state.store ? get().view() : EMPTY);
 
 module.exports = {
   view,
   config: () => get().config(),
   setSecret: (provider, key, value) => get().setSecret(provider, key, value),
-  browse: (provider, pth) => get().browse(provider, pth),
-  observe: (app_) => get().observe(app_),
-  unobserve: (id) => get().unobserve(id),
-  assign: (id, clientId) => get().assign(id, clientId),
+  setHidden: (key, hidden) => get().setHidden(key, hidden),
+  urlOf: (itemId) => get().urlOf(itemId),
   refresh: () => get().refresh(),
   start: () => get().start(),
   stop: () => { if (observer) observer.stop(); },

@@ -2,24 +2,27 @@
 // Fournisseur Railway, en lecture seule (ADR-1). Un seul chemin réseau, `gql()`, qui n'envoie que les requêtes figées de QUERIES :
 // aucun texte saisi par l'utilisateur n'est jamais envoyé, et tout texte qui ressemble à une écriture est refusé avant l'envoi.
 // Jeton attendu : jeton de compte (il faut `me` pour lister les espaces de travail), posé à la main dans les Réglages.
-const crypto = require('node:crypto');
+//
+// Une cible est un environnement : un appel rend tous ses services avec leur dernier déploiement (ADR-7).
 const { redact } = require('./providers');
 
 const ENDPOINT = 'https://backboard.railway.com/graphql/v2';
+const DASHBOARD = 'https://railway.com';
 const TIMEOUT_MS = 20000;
-const MAX_PROJECTS = 200;
+const MAX_PROJECTS = 500;              // limite demandée à l'API pour les projets d'un espace ; au-delà, la liste le dit
+const PAGE_SIZE = 100;                 // services par page d'un environnement
+const MAX_PAGES = 10;                  // au-delà de MAX_PAGES × PAGE_SIZE services, la cible le dit
 const PARALLEL = 4;
 const SOFT_LIMIT = 3;                  // échecs consécutifs (délai, erreur 5xx) qui coupent le relevé
 const CODELESS_LIMIT = 10;             // erreurs propres à une requête, sans aucune réponse valable, qui coupent le relevé
 const MAX_BODY = 5 * 1000 * 1000;      // une réponse annoncée plus grosse n'est pas lue ; une autre est refusée après lecture
-const PROJECTS_TTL_MS = 60 * 1000;     // la liste des projets d'un espace ne change pas entre deux dépliages
 const DEFAULT_BACKOFF_MS = 60 * 1000;  // 429 sans Retry-After
 
 // Mise en forme volontairement serrée : les doubles de test reconnaissent une requête à un fragment de son texte.
 const QUERIES = Object.freeze({
-  workspaces: 'query Workspaces { me { workspaces { id name } } }',
-  projects: `query Projects($w: String!) { projects(workspaceId: $w, first: ${MAX_PROJECTS}) { edges { node { id name environments { edges { node { id name } } } services { edges { node { id name } } } } } } }`,
-  deployments: 'query Deployments($p: String!, $e: String!, $s: String!) { deployments(first: 5, input: { projectId: $p, environmentId: $e, serviceId: $s }) { edges { node { id status createdAt } } } }',
+  tree: `query Tree { me { workspaces { id name projects(first: ${MAX_PROJECTS}) { edges { node { id name deletedAt environments { edges { node { id name canAccess } } } } } } } } }`,
+  external: 'query External { externalWorkspaces { id name projects { id name deletedAt environments { edges { node { id name canAccess } } } } } }',
+  instances: `query Instances($p: String!, $e: String!, $after: String) { environment(id: $e, projectId: $p) { id serviceInstances(first: ${PAGE_SIZE}, after: $after) { edges { node { serviceId serviceName latestDeployment { id status } } } pageInfo { hasNextPage endCursor } } } }`,
 });
 
 const WRITE_OPS = /\b(mutation|subscription)\b/i;
@@ -29,7 +32,10 @@ const STATE_OF = {
   BUILDING: 'deploying', DEPLOYING: 'deploying', INITIALIZING: 'deploying', QUEUED: 'deploying', WAITING: 'deploying', NEEDS_APPROVAL: 'deploying',
   FAILED: 'failed', CRASHED: 'failed',
 };
-const IGNORED = new Set(['REMOVED', 'REMOVING', 'SKIPPED']); // un déploiement retiré ne dit rien de l'état courant : le suivant décide
+// REMOVED, REMOVING, SKIPPED et tout statut inconnu : `unknown`, avec le statut brut en détail.
+
+// Pire état d'abord : l'état d'un environnement est celui de son service le moins bien portant.
+const WORST_FIRST = ['failed', 'deploying', 'online', 'unknown'];
 
 const nodes = (conn) => (conn?.edges || []).map((e) => e.node).filter(Boolean);
 
@@ -65,6 +71,9 @@ async function readBody(res) {
 }
 
 function isLocal(host) { return ['127.0.0.1', 'localhost', '[::1]'].includes(host); }
+
+// Page du service dans le tableau de bord de Railway : l'adresse est produite ici, à partir d'identifiants, jamais fournie par l'interface.
+const serviceUrl = (ref, serviceId) => `${DASHBOARD}/project/${encodeURIComponent(ref.projectId)}/service/${encodeURIComponent(serviceId)}?environmentId=${encodeURIComponent(ref.environmentId)}`;
 
 function createRailway({ fetch = globalThis.fetch, endpoint = ENDPOINT } = {}) {
   const url = new URL(endpoint);
@@ -113,64 +122,80 @@ function createRailway({ fetch = globalThis.fetch, endpoint = ENDPOINT } = {}) {
     return body.data;
   }
 
-  // Projets d'un espace de travail, gardés une minute. La clé porte l'empreinte du jeton, jamais le jeton ; la promesse est gardée,
-  // donc deux dépliages simultanés ne font qu'une requête ; une requête en échec n'est pas gardée.
-  const projectsCache = new Map(); // empreinte du jeton + espace de travail -> { at, promise }
-  function projectsOf(creds, workspace) {
-    const now = Date.now();
-    for (const [k, v] of projectsCache) if (now - v.at >= PROJECTS_TTL_MS) projectsCache.delete(k);
-    const key = `${crypto.createHash('sha256').update(creds.token).digest('hex')}:${workspace}`;
-    const hit = projectsCache.get(key);
-    if (hit) return hit.promise;
-    const promise = gql('projects', { w: workspace }, creds).then((data) => nodes(data.projects));
-    projectsCache.set(key, { at: now, promise });
-    promise.catch(() => projectsCache.delete(key));
-    return promise;
+  /* ---------- Découverte : tous les environnements lisibles ---------- */
+  async function list(creds) {
+    let mine;
+    try { mine = await gql('tree', {}, creds); } catch (e) {
+      // Une erreur classée (jeton refusé, quota, délai) garde son code et son délai ; seule une erreur de schéma reçoit l'indication.
+      if (e.code || /jeton/.test(e.message)) throw e;
+      throw new Error(`${e.message} (un jeton de compte est nécessaire pour lister les espaces de travail)`);
+    }
+    const targets = [];
+    const notes = [];
+    const seen = new Set();
+    const addProjects = (workspace, projects) => {
+      for (const p of projects) {
+        if (p.deletedAt) continue;
+        for (const e of nodes(p.environments)) {
+          if (e.canAccess === false || seen.has(e.id)) continue;
+          seen.add(e.id);
+          targets.push({
+            ref: { projectId: p.id, environmentId: e.id },
+            path: [{ id: workspace.id, name: workspace.name, kind: 'workspace' }, { id: p.id, name: p.name, kind: 'project' }, { id: e.id, name: e.name, kind: 'environment' }],
+          });
+        }
+      }
+    };
+    for (const w of mine.me?.workspaces || []) {
+      const projects = nodes(w.projects);
+      if (projects.length >= MAX_PROJECTS) notes.push(`Liste tronquée aux ${MAX_PROJECTS} premiers projets de ${w.name}`);
+      addProjects(w, projects);
+    }
+    // Espaces où l'on est invité : ils ne sont pas dans `me.workspaces`. Une erreur ici ne casse pas la liste, elle se dit.
+    try {
+      const guest = await gql('external', {}, creds);
+      for (const w of guest.externalWorkspaces || []) addProjects(w, w.projects || []);
+    } catch (e) {
+      notes.push(`Espaces invités non lus : ${e.message}`);
+    }
+    return { targets, notes };
   }
 
-  async function browse(creds, path = []) {
-    if (path.length === 0) {
-      try {
-        const data = await gql('workspaces', {}, creds);
-        return (data.me?.workspaces || []).map(({ id, name }) => ({ id, name }));
-      } catch (e) {
-        if (/jeton/.test(e.message)) throw e;
-        throw new Error(`${e.message} (un jeton de compte est nécessaire pour lister les espaces de travail)`);
-      }
-    }
-    const projects = await projectsOf(creds, path[0]);
-    if (path.length === 1) {
-      const out = projects.map(({ id, name }) => ({ id, name }));
-      if (projects.length >= MAX_PROJECTS) out.push({ id: '__truncated', name: `Liste tronquée aux ${MAX_PROJECTS} premiers projets`, truncated: true });
-      return out;
-    }
-    const project = projects.find((p) => p.id === path[1]);
-    if (!project) throw new Error('Railway : projet introuvable');
-    const envs = nodes(project.environments);
-    const out = [];
-    for (const service of nodes(project.services)) {
-      for (const env of envs) {
-        const label = `${service.name} (${env.name})`;
-        out.push({ id: `${service.id}:${env.id}`, name: label, app: { ref: { projectId: project.id, environmentId: env.id, serviceId: service.id }, label, project: project.name } });
-      }
-    }
-    return out;
-  }
+  /* ---------- Lecture d'un environnement : ses services et leur dernier déploiement ---------- */
+  const appOf = (ref, node) => {
+    const d = node.latestDeployment;
+    return {
+      id: node.serviceId, name: node.serviceName,
+      state: d ? STATE_OF[d.status] || 'unknown' : 'unknown',
+      detail: d ? String(d.status) : 'Aucun déploiement',
+      url: serviceUrl(ref, node.serviceId),
+    };
+  };
 
-  // Le dernier déploiement qui compte décide ; un échec reste affiché tant qu'un déploiement plus récent n'a pas réussi.
   async function statusOf(creds, ref) {
-    const data = await gql('deployments', { p: ref.projectId, e: ref.environmentId, s: ref.serviceId }, creds);
-    const latest = nodes(data.deployments).find((d) => !IGNORED.has(d.status));
-    if (!latest) return { state: 'unknown', detail: 'Aucun déploiement' };
-    return { state: STATE_OF[latest.status] || 'unknown', detail: latest.status };
+    const apps = [];
+    let after = null;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const data = await gql('instances', { p: ref.projectId, e: ref.environmentId, after }, creds);
+      const env = data.environment;
+      if (!env) return { state: 'unknown', detail: 'Environnement introuvable' };
+      const conn = env.serviceInstances;
+      for (const n of nodes(conn)) apps.push(appOf(ref, n));
+      if (!conn?.pageInfo?.hasNextPage) {
+        if (!apps.length) return { state: 'unknown', detail: 'Aucun service', apps };
+        return { state: WORST_FIRST.find((s) => apps.some((a) => a.state === s)), detail: '', apps };
+      }
+      after = conn.pageInfo.endCursor;
+    }
+    return { state: 'unknown', detail: `Plus de ${MAX_PAGES * PAGE_SIZE} services`, note: `Plus de ${MAX_PAGES * PAGE_SIZE} services : les suivants ne sont pas lus`, apps };
   }
 
   // Disjoncteur à trois vitesses :
-  //  - jeton refusé, quota atteint (401, 403, 429) : concerne toute la flotte, coupe tout de suite, et chaque app porte le motif ;
+  //  - jeton refusé, quota atteint (401, 403, 429) : concerne toute la flotte, coupe tout de suite, et chaque cible porte le motif ;
   //  - délai dépassé ou erreur 5xx : coupe après SOFT_LIMIT échecs de suite (un incident isolé ne doit pas effacer la flotte) ;
-  //  - erreur propre à une requête (service supprimé, accès retiré) : n'est jamais systémique, sauf si AUCUNE app n'a répondu après
-  //    CODELESS_LIMIT essais (schéma refusé partout).
-  // Une app non tentée (budget, coupure souple) est « sautée » : son dernier état connu reste valable.
+  //  - erreur propre à une requête (environnement supprimé, accès retiré) : n'est jamais systémique, sauf si AUCUNE cible n'a répondu
+  //    après CODELESS_LIMIT essais (schéma refusé partout).
+  // Une cible non tentée (budget, coupure souple) est « sautée » : son dernier état connu reste valable.
   async function statuses(creds, refs, { deadline = Infinity } = {}) {
     const out = new Array(refs.length);
     let next = 0;
@@ -189,13 +214,13 @@ function createRailway({ fetch = globalThis.fetch, endpoint = ENDPOINT } = {}) {
           answered++;
         } catch (e) {
           const detail = redact(e.message, creds);
-          // Quota atteint : la requête refusée n'est pas une réponse de l'app, elle est sautée comme les autres (état et rang conservés).
+          // Quota atteint : la requête refusée n'est pas une réponse de la cible, elle est sautée comme les autres (état et rang conservés).
           out[i] = { state: 'unknown', detail, backoffMs: e.backoffMs, skipped: e.code === 'rate' ? true : undefined };
           if (e.code === 'denied') stop = { detail, backoffMs: e.backoffMs };
           else if (e.code === 'rate') stop = { detail, backoffMs: e.backoffMs, skipped: true };
           else if (e.code) { if (++soft >= SOFT_LIMIT) stop = { detail, backoffMs: e.backoffMs, skipped: true }; }
-          // Le motif des apps non tentées est neutre : l'erreur d'une app cassée ne doit pas s'afficher sur des apps qui n'ont rien à voir.
-          else if (answered === 0 && ++codeless >= CODELESS_LIMIT) stop = { detail: 'Relevé interrompu : aucune app n\'a répondu', skipped: true };
+          // Le motif des cibles non tentées est neutre : l'erreur d'une cible cassée ne doit pas s'afficher sur des cibles qui n'ont rien à voir.
+          else if (answered === 0 && ++codeless >= CODELESS_LIMIT) stop = { detail: 'Relevé interrompu : aucune cible n\'a répondu', skipped: true };
         }
       }
     };
@@ -204,13 +229,13 @@ function createRailway({ fetch = globalThis.fetch, endpoint = ENDPOINT } = {}) {
   }
 
   function validateRef(ref) {
-    if (!ref || !ref.projectId || !ref.environmentId || !ref.serviceId) throw new Error('Référence Railway invalide : projet, environnement et service requis');
+    if (!ref || !ref.projectId || !ref.environmentId) throw new Error('Référence Railway invalide : projet et environnement requis');
   }
 
   return {
     id: 'railway', label: 'Railway', secrets: [{ key: 'token', label: 'Jeton de compte' }],
-    browse, statuses, validateRef,
-    _gql: gql, _assertReadOnly: assertReadOnly, _cacheKeys: () => [...projectsCache.keys()],
+    list, statuses, validateRef,
+    _gql: gql, _assertReadOnly: assertReadOnly,
   };
 }
 

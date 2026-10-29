@@ -89,10 +89,7 @@ const admin = {
 
   'servers.config': () => servers.config(),
   'servers.setSecret': (a) => servers.setSecret(String(a.provider), String(a.key), a.value === null ? null : String(a.value ?? '')),
-  'servers.browse': (a) => servers.browse(String(a.provider), Array.isArray(a.path) ? a.path.map(String) : []),
-  'servers.observe': (a) => servers.observe({ provider: String(a.provider), ref: a.ref, label: a.label, project: a.project }),
-  'servers.unobserve': (a) => servers.unobserve(String(a.id)),
-  'servers.assign': (a) => servers.assign(String(a.id), a.clientId ? String(a.clientId) : null),
+  'servers.setHidden': (a) => servers.setHidden(String(a.key), !!a.hidden),
   'servers.refresh': () => servers.refresh(),
 
   'share.me': () => share.myShareId(),

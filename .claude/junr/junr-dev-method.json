@@ -33,7 +33,9 @@
     "**/*.md"
   ],
   "verify": {
-    "test": "npm run --silent test"
+    "test:unit": "npm run --silent test:unit",
+    "test:smoke": "npm run --silent test:smoke",
+    "test:e2e": "npm run --silent test:e2e"
   },
   "maxReviewRounds": 5,
   "attendance": [
