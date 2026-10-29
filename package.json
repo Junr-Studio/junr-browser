@@ -40,7 +40,7 @@
       "package.json",
       "src/**/*",
       "shell/**/*",
-      "extensions/**/*",
+      "extensions/**/*","assets/icon.png",
       "!extensions/junr-demo/**",
       "!**/*.md",
       "!**/*.map"
@@ -54,6 +54,7 @@
       }
     ],
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -62,7 +63,7 @@
           ]
         }
       ],
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true
     },
     "nsis": {
       "oneClick": true,

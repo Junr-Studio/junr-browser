@@ -50,7 +50,7 @@ async function start(seed) {
   Menu.setApplicationMenu(null);
   // Une seule barre en haut sert aussi de barre de titre : les boutons du système se posent par-dessus (même hauteur que la barre).
   state.win = new BaseWindow({
-    width: 1360, height: 860, minWidth: 900, minHeight: 560, title: 'Junr Browser',
+    width: 1360, height: 860, minWidth: 900, minHeight: 560, title: 'Junr Browser', icon: path.join(__dirname, 'assets', 'icon.png'),
     titleBarStyle: 'hidden', titleBarOverlay: { color: '#111a25', symbolColor: '#d5dce6', height: TOPBAR_H },
   });
   state.shell = new WebContentsView({
