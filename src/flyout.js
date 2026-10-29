@@ -162,6 +162,14 @@ const actions = {
   'update-install': () => require('./updater').install(),
   'open-settings': (section) => tabs().openInternal('settings', section || null),
   'servers-refresh': () => require('./servers').refresh(),
+  // L'adresse vient du noyau (produite par le fournisseur) : le volet ne transmet qu'un identifiant d'item.
+  'servers-open': async (id) => {
+    if (state.vitrine) return; // la page du fournisseur montre les noms que la vitrine masque
+    const url = require('./servers').urlOf(String(id));
+    if (!url) return;
+    const t = tabs().addTab({ spaceId: 'global', url });
+    await tabs().activateTab(t.id);
+  },
   'ext-action': (id) => require('./extensions/actions').click(String(id), undefined, anchor ? anchor.right : 0),
   'ext-pin': (id, pinned) => require('./spaces').pinExtension(String(id), !!pinned),
   'ext-context': (id, x, y) => { const b = view ? view.getBounds() : { x: 0, y: 0 }; return require('./extensions/actions').contextMenu(String(id), b.x + (Number(x) || 0), b.y + (Number(y) || 0)); },

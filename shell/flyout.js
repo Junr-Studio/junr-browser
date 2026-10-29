@@ -212,18 +212,21 @@ function renderExtensions(s, panel) {
   panel.append(manage);
 }
 
-/* ---------- Serveurs : liste défilante, groupée par client ---------- */
-function serverRow(it) {
-  const row = el('div', 'srow');
+/* ---------- Serveurs : liste défilante, déploiements en cours en tête, puis hiérarchie du fournisseur ---------- */
+function serverRow(it, withPath) {
+  const row = el('button', 'srow');
+  row.type = 'button';
   row.title = it.detail ? `${SERVER_STATE[it.state]} (${it.detail})` : SERVER_STATE[it.state];
-  const top = el('div', 'stop');
+  row.onclick = () => act('servers-open', it.id);
+  const top = el('span', 'stop');
   top.append(el('span', `sd ${it.state}`), el('span', 'sname', it.label || 'App masquée'), el('span', `sstate ${it.state}`, SERVER_STATE[it.state]));
-  row.append(top, el('div', 'ssub', [it.project, ago(it.at) || 'jamais relevé'].filter(Boolean).join(' · ')));
+  const where = withPath ? [it.project, it.environment].filter(Boolean).join(' › ') : '';
+  row.append(top, el('span', 'ssub', [where, ago(it.at) || 'jamais relevé'].filter(Boolean).join(' · ')));
   return row;
 }
 
 function renderServers(s, panel) {
-  const v = s.servers || { items: [], checkedAt: 0 };
+  const v = s.servers || { items: [], checkedAt: 0, notes: [] };
   const head = el('div', 'srv-head');
   head.append(el('div', 'section-title', 'Serveurs'));
   const waiting = v.waitUntil > Date.now() ? `Quota atteint, nouvel essai à ${new Date(v.waitUntil).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : '';
@@ -233,26 +236,29 @@ function renderServers(s, panel) {
   refresh.onclick = () => act('servers-refresh');
   head.append(sub, refresh);
   panel.append(head);
-  if (!v.items.length) panel.append(el('div', 'empty-note', 'Aucune app observée.'));
+  if (!v.items.length) panel.append(el('div', 'empty-note', v.configured ? 'Rien à afficher.' : 'Aucun jeton enregistré.'));
   else {
-    // Clients dans l'ordre de la barre, puis les apps sans client.
-    const order = (s.spaces || []).map((c) => c.name);
-    const groups = new Map();
-    for (const it of v.items) {
-      const k = it.clientName || '';
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k).push(it);
-    }
-    const keys = [...groups.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999)));
     const list = el('div', 'srv-list');
-    for (const k of keys) {
-      list.append(el('div', 'section-title', k || 'Non rattachées'));
-      for (const it of groups.get(k)) list.append(serverRow(it));
+    const live = v.items.filter((it) => it.state === 'deploying');
+    if (live.length) {
+      list.append(el('div', 'section-title', 'En cours de déploiement'));
+      for (const it of live) list.append(serverRow(it, true));
+    }
+    // Hiérarchie du fournisseur : espace (seulement s'il y en a plusieurs) › projet › environnement. L'ordre de la découverte est conservé.
+    const rest = v.items.filter((it) => it.state !== 'deploying');
+    const spaces = new Set(v.items.map((it) => it.workspace));
+    let w = null, p = null, e = null;
+    for (const it of rest) {
+      if (spaces.size > 1 && it.workspace !== w) { w = it.workspace; p = null; e = null; list.append(el('div', 'section-title', w || 'Sans espace')); }
+      if (it.project !== p) { p = it.project; e = null; list.append(el('div', 'srv-project', p || 'Sans projet')); }
+      if (it.environment !== e) { e = it.environment; if (e) list.append(el('div', 'srv-env', e)); }
+      list.append(serverRow(it, false));
     }
     panel.append(list);
   }
+  for (const n of v.notes || []) panel.append(el('div', 'empty-note', n));
   const manage = el('button', 'side-btn');
-  manage.append(el('span', '', v.items.length ? 'Gérer les serveurs' : 'Choisir les apps à observer'));
+  manage.append(el('span', '', v.configured ? 'Gérer les serveurs' : 'Enregistrer un jeton'));
   manage.onclick = () => act('open-settings', 'servers');
   panel.append(manage);
 }

@@ -102,10 +102,13 @@ button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .srv-head .section-title { flex: 1; padding-bottom: 5px; }
 .srv-sub { font-size: 11px; color: var(--side-dim); }
 .srv-list { max-height: 380px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #ffffff30 transparent; }
-.srow { padding: 6px 8px; }
+.srow { display: block; width: 100%; padding: 6px 8px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 8px; transition: background .12s; }
+.srow:hover { background: var(--side-hover); }
+.srv-project { padding: 8px 8px 2px; font-size: 12px; font-weight: 600; }
+.srv-env { padding: 2px 8px 0 14px; font-size: 11px; color: var(--side-dim); }
 .stop { display: flex; align-items: center; gap: 9px; }
 .sstate { flex: none; font-size: 11.5px; color: var(--side-dim); }
 .sstate.failed { color: var(--danger); font-weight: 600; }
 .sstate.deploying { color: var(--warn); }
 /* 19px = 10px de la forme .sd + 9px d'espacement de .stop : le sous-titre s'aligne sous le nom */
-.ssub { margin: 1px 0 0 19px; font-size: 11px; color: var(--side-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ssub { display: block; margin: 1px 0 0 19px; font-size: 11px; color: var(--side-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

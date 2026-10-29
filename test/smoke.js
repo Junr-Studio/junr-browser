@@ -1504,46 +1504,49 @@ async function run(core) {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  await section('Serveurs : observation, secrets et API d\'administration', async () => {
+  // Fournisseur de test : deux projets dans un espace, trois environnements ; l'état de chaque environnement se pilote par `outcome`.
+  const demoProvider = (outcome = {}, extra = {}) => {
+    const path = (n, project, env) => [{ id: 'w1', name: 'Espace démo', kind: 'workspace' }, { id: project === 'Alpha' ? 'p1' : 'p2', name: project, kind: 'project' }, { id: `e${n}`, name: env, kind: 'environment' }];
+    return {
+      id: 'demo', label: 'Démo', secrets: [{ key: 'token', label: 'Jeton' }],
+      list: async () => ({ targets: [{ ref: { n: 1 }, path: path(1, 'Alpha', 'production') }, { ref: { n: 2 }, path: path(2, 'Alpha', 'staging') }, { ref: { n: 3 }, path: path(3, 'Beta', 'production') }], notes: [] }),
+      statuses: async (creds, refs) => refs.map((r) => {
+        const state = outcome[r.n] || 'online';
+        return { state, detail: state, apps: [{ id: `s${r.n}`, name: `api-${r.n}`, state, detail: state, url: `https://railway.com/project/p/service/s${r.n}?environmentId=e${r.n}` }] };
+      }),
+      ...extra,
+    };
+  };
+
+  await section('Serveurs : découverte, masquage et API d\'administration', async () => {
     const providers = require('../src/servers/providers');
     const servers = require('../src/servers');
-    let mode = 'online';
-    providers.register({
-      id: 'demo', label: 'Démo', secrets: [{ key: 'token', label: 'Jeton' }],
-      browse: async (creds, p) => (p.length ? [{ id: 'a1', name: 'api (prod)', app: { ref: { n: 1 }, label: 'api (prod)', project: 'Projet démo' } }] : [{ id: 'w1', name: 'Espace démo' }]),
-      statuses: async (creds, refs) => refs.map(() => ({ state: mode, detail: mode })),
-    });
+    const outcome = {};
+    providers.register(demoProvider(outcome));
     const admin = core.ipc.admin;
     const SECRET = 'jeton-SECRET-pour-test-0123';
     const cfg = await admin['servers.config']({});
     check('Serveurs : Railway et le fournisseur de test sont proposés', cfg.providers.some((p) => p.id === 'railway') && cfg.providers.some((p) => p.id === 'demo'));
     check('Serveurs : sans jeton, la barre n\'affiche rien', tabs.snapshot().servers.configured === false);
-    check('Serveurs : parcours refusé sans jeton', /jeton/i.test(await throws(() => admin['servers.browse']({ provider: 'demo', path: [] })) || ''));
     await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: SECRET });
     check('Serveurs : jeton chiffré dans le fichier de données', !fs.readFileSync(state.store.file, 'utf8').includes(SECRET) && JSON.stringify(await admin['servers.config']({})).includes(SECRET) === false);
     check('Serveurs : la barre sait qu\'un jeton est posé', tabs.snapshot().servers.configured === true);
-    const roots = await admin['servers.browse']({ provider: 'demo', path: [] });
-    const leaves = await admin['servers.browse']({ provider: 'demo', path: [roots[0].id] });
-    const entry = await admin['servers.observe']({ provider: 'demo', ...leaves[0].app });
-    await admin['servers.observe']({ provider: 'demo', ...leaves[0].app });
-    check('Serveurs : une app cochée deux fois n\'est observée qu\'une fois', (await admin['servers.config']({})).observed.length === 1);
+    const items = () => tabs.snapshot().servers.items;
+    await admin['servers.refresh']({}); // l'observateur n'est pas démarré ici : le relevé se demande
+    await until(() => (items().length === 3 && items().every((i) => i.at > 0)) || null, 4000, 100);
+    check('Serveurs : tout ce que le jeton lit s\'affiche sans aucun choix', items().length === 3 && tabs.snapshot().servers.mark === 'online', items());
+    outcome[2] = 'failed'; outcome[3] = 'deploying';
     await admin['servers.refresh']({});
-    const item = () => tabs.snapshot().servers.items[0];
-    check('Serveurs : le statut relevé arrive dans l\'état de la barre', item()?.state === 'online' && tabs.snapshot().servers.mark === 'online', item());
-    mode = 'failed';
-    await admin['servers.refresh']({});
-    check('Serveurs : un déploiement échoué remonte à la marque globale', item().state === 'failed' && tabs.snapshot().servers.mark === 'failed');
-    await admin['servers.assign']({ id: entry.id, clientId: 'acme' });
-    check('Serveurs : l\'app rattachée porte le nom de son client', item().clientName === 'Acme');
-    state.vitrine = true; await tabs.switchSpace('globex');
-    check('Serveurs : en vitrine, le client d\'une autre app est masqué', !JSON.stringify(tabs.snapshot().servers).includes('Acme') && tabs.snapshot().servers.items[0].label === '', tabs.snapshot().servers.items[0]);
-    const loose = await admin['servers.observe']({ provider: 'demo', ref: { n: 2 }, label: 'interne-acme', project: 'Projet Acme' });
-    check('Serveurs : en vitrine, une app sans client est masquée aussi', !JSON.stringify(tabs.snapshot().servers).includes('interne-acme'), tabs.snapshot().servers.items.map((i) => i.label));
+    check('Serveurs : un déploiement échoué remonte à la marque globale', tabs.snapshot().servers.mark === 'failed');
+    check('Serveurs : le déploiement en cours est en tête de liste', items()[0].state === 'deploying', items().map((i) => i.state));
+    await admin['servers.setHidden']({ key: 'demo:w1/p2', hidden: true });
+    check('Serveurs : masquer un projet retire ses environnements', items().length === 2 && !items().some((i) => i.project === 'Beta'), items().map((i) => i.project));
+    check('Serveurs : une clé inconnue est refusée', /inconnue/i.test(await throws(() => admin['servers.setHidden']({ key: 'demo:rien', hidden: true })) || ''));
+    await admin['servers.setHidden']({ key: 'demo:w1/p2', hidden: false });
+    check('Serveurs : réafficher ramène le projet', items().length === 3);
+    state.vitrine = true;
+    check('Serveurs : en vitrine, aucun nom ne sort', !/api-|Alpha|Beta|Espace démo|production/.test(JSON.stringify(tabs.snapshot().servers)), items()[0]);
     state.vitrine = false;
-    await admin['servers.unobserve']({ id: loose.id });
-    check('Serveurs : client inconnu refusé', /client inconnu/i.test(await throws(() => admin['servers.assign']({ id: entry.id, clientId: 'nope' })) || ''));
-    await admin['servers.unobserve']({ id: entry.id });
-    check('Serveurs : app retirée de la liste', tabs.snapshot().servers.items.length === 0);
     await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: null });
     check('Serveurs : jeton effacé', tabs.snapshot().servers.configured === false);
     servers.stop();
@@ -1551,11 +1554,7 @@ async function run(core) {
 
   await section('Serveurs : page Réglages', async () => {
     const providers = require('../src/servers/providers');
-    providers.register({
-      id: 'demo', label: 'Démo', secrets: [{ key: 'token', label: 'Jeton' }],
-      browse: async (creds, p) => (p.length ? [{ id: 'a1', name: 'api (prod)', app: { ref: { n: 1 }, label: 'api (prod)', project: 'Projet démo' } }] : [{ id: 'w1', name: 'Espace démo' }]),
-      statuses: async (creds, refs) => refs.map(() => ({ state: 'online', detail: 'ok' })),
-    });
+    providers.register(demoProvider());
     const admin = core.ipc.admin;
     const SECRET = 'jeton-SECRET-reglages-4567';
     await tabs.openInternal('settings');
@@ -1566,26 +1565,25 @@ async function run(core) {
     check('Réglages › Serveurs : la section s\'affiche', h1 === 'Serveurs', h1);
     const click = (sel) => ev(tab, `(() => { const n = document.querySelector(${JSON.stringify(sel)}); if (!n) return false; n.click(); return true; })()`);
     const has = (sel) => until(async () => (await ev(tab, `!!document.querySelector(${JSON.stringify(sel)})`)) || null, 4000, 100);
-    check('Réglages › Serveurs : sans jeton, pas de parcours proposé', !(await ev(tab, `!!document.querySelector('[aria-label="Parcourir Démo"]')`)));
     await ev(tab, `(() => { const i = document.querySelector('input[aria-label="Jeton Démo"]'); i.value = ${JSON.stringify(SECRET)}; return i.type; })()`)
       .then((type) => check('Réglages › Serveurs : le champ du jeton est masqué', type === 'password', type));
     await click('button[aria-label="Enregistrer le jeton Démo"]');
-    check('Réglages › Serveurs : jeton enregistré, parcours proposé', !!(await has('[aria-label="Parcourir Démo"]')));
+    await until(async () => ((await admin['servers.config']({})).tree.length) || null, 4000, 100);
+    await admin['servers.refresh']({});
+    await ev(tab, `[...document.querySelectorAll('button')].find((b) => b.textContent === 'Actualiser')?.click()`);
+    await has('input[aria-label="Jeton Démo"][placeholder^="Enregistré"]');
     check('Réglages › Serveurs : le jeton n\'est jamais dans la page', !(await ev(tab, `document.documentElement.innerHTML.includes(${JSON.stringify(SECRET)}) || [...document.querySelectorAll('input')].some((i) => i.value.includes(${JSON.stringify(SECRET)}))`)));
-    await click('[aria-label="Parcourir Démo"]');
-    await click(await has('button[data-node="w1"]') && 'button[data-node="w1"]');
-    const box = 'input[aria-label="Observer api (prod)"]';
-    check('Réglages › Serveurs : le parcours mène aux apps', !!(await has(box)));
-    await click(box);
-    await until(async () => (await admin['servers.config']({})).observed.length === 1 || null, 4000, 100);
-    check('Réglages › Serveurs : cocher une app l\'observe', (await admin['servers.config']({})).observed.length === 1);
-    check('Réglages › Serveurs : l\'app observée est cochée et listée', !!(await has('input[aria-label="Observer api (prod)"]:checked')) && !!(await has('select[aria-label="Client de api (prod)"]')));
-    await ev(tab, `(() => { const s = document.querySelector('select[aria-label="Client de api (prod)"]'); s.value = 'acme'; s.dispatchEvent(new Event('change')); })()`);
-    await until(async () => (await admin['servers.config']({})).observed[0]?.clientId === 'acme' || null, 4000, 100);
-    check('Réglages › Serveurs : l\'app est rattachée au client choisi', (await admin['servers.config']({})).observed[0]?.clientId === 'acme');
-    await click('input[aria-label="Observer api (prod)"]');
-    await until(async () => (await admin['servers.config']({})).observed.length === 0 || null, 4000, 100);
-    check('Réglages › Serveurs : décocher retire l\'app', (await admin['servers.config']({})).observed.length === 0);
+    check('Réglages › Serveurs : l\'espace découvert est listé et coché', !!(await has('input[aria-label="Afficher Espace démo"]:checked')));
+    await click('button[aria-label="Déplier Espace démo"]');
+    check('Réglages › Serveurs : le projet est listé sous l\'espace', !!(await has('input[aria-label="Afficher Alpha"]')));
+    await click('input[aria-label="Afficher Alpha"]');
+    await until(async () => (await admin['servers.config']({})).tree[0].children.find((c) => c.name === 'Alpha')?.hidden || null, 4000, 100);
+    check('Réglages › Serveurs : décocher un projet le masque', (await admin['servers.config']({})).tree[0].children.find((c) => c.name === 'Alpha').hidden === true);
+    await click('button[aria-label="Déplier Alpha"]');
+    check('Réglages › Serveurs : ce qui est sous un projet masqué est grisé', !!(await has('input[aria-label="Afficher production"]:disabled')));
+    await click('input[aria-label="Afficher Alpha"]');
+    await until(async () => !(await admin['servers.config']({})).tree[0].children.find((c) => c.name === 'Alpha')?.hidden || null, 4000, 100);
+    check('Réglages › Serveurs : recocher le réaffiche', (await admin['servers.config']({})).tree[0].children.find((c) => c.name === 'Alpha').hidden === false);
     await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: null });
     await tabs.closeTab(tab.id);
     require('../src/servers').stop();
@@ -1595,73 +1593,63 @@ async function run(core) {
     const providers = require('../src/servers/providers');
     const servers = require('../src/servers');
     const flyout = require('../src/flyout');
-    const outcome = { 1: 'online', 2: 'failed', 3: 'deploying', 4: 'unknown' };
-    providers.register({
-      id: 'demo', label: 'Démo', secrets: [{ key: 'token', label: 'Jeton' }],
-      browse: async () => [],
-      statuses: async (creds, refs) => refs.map((r) => ({ state: outcome[r.n] || 'online', detail: outcome[r.n] || 'online' })),
-    });
+    const outcome = { 1: 'online', 2: 'failed', 3: 'deploying' };
+    providers.register(demoProvider(outcome));
     const admin = core.ipc.admin;
     const bar = (code) => state.shell.webContents.executeJavaScript(code, true);
     const panel = (code) => flyout._view().webContents.executeJavaScript(code, true);
     state.vitrine = false; await tabs.switchSpace('acme');
     check('Icône des serveurs : cachée sans jeton', await bar(`document.getElementById('servers').hidden`) === true);
     await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: 'jeton-pour-volet-8910' });
-    const mk = (n, label) => ({ provider: 'demo', ref: { n }, label, project: `Projet ${n}` });
-    const a1 = await admin['servers.observe'](mk(1, 'api'));
-    await admin['servers.observe'](mk(2, 'site'));
-    await admin['servers.observe'](mk(3, 'worker'));
-    await admin['servers.observe'](mk(4, 'cron'));
-    await admin['servers.assign']({ id: a1.id, clientId: 'acme' });
     await admin['servers.refresh']({});
     check('Icône des serveurs : visible avec un jeton', !!(await until(async () => (await bar(`!document.getElementById('servers').hidden`)) || null, 4000, 100)));
     check('Icône des serveurs : la marque suit le pire état (échec)', !!(await until(async () => (await bar(`document.getElementById('servers-mark').classList.contains('failed')`)) || null, 4000, 100)));
-    check('Icône des serveurs : la barre ne reçoit que le résumé, pas la liste', await bar(`current.servers.items === undefined && current.servers.count === 4`));
-    check('Icône des serveurs : étiquette lisible pour l\'accessibilité', /4 app/.test(await bar(`document.getElementById('servers').getAttribute('aria-label')`)));
+    check('Icône des serveurs : la barre ne reçoit que le résumé, pas la liste', await bar(`current.servers.items === undefined && current.servers.count === 3`));
+    check('Icône des serveurs : étiquette lisible pour l\'accessibilité', /3 app/.test(await bar(`document.getElementById('servers').getAttribute('aria-label')`)));
 
     await flyout.open('servers', { x: 800, right: 840 });
     check('Volet des serveurs : ouvert sous la barre', flyout.isOpen() && flyout._kind() === 'servers');
     const text = await until(async () => { const t = await panel(`document.getElementById('panel').innerText`); return /Dernier déploiement échoué/.test(t) ? t : null; }, 4000, 100);
-    check('Volet : les quatre statuts sont écrits en mots', !!text && /En ligne/.test(text) && /En déploiement/.test(text) && /Dernier déploiement échoué/.test(text) && /Inconnu/.test(text), text);
-    const low = (text || '').toLowerCase(); // les titres de groupe sont mis en capitales par le style
-    check('Volet : groupé par client, puis « Non rattachées »', low.indexOf('acme') >= 0 && low.indexOf('acme') < low.indexOf('non rattachées') && low.indexOf('api') < low.indexOf('non rattachées') && low.indexOf('site') > low.indexOf('non rattachées'), text);
-    check('Volet : chaque statut a une forme en plus de la couleur', (await panel(`[...document.querySelectorAll('.srow .sd')].map((n) => [...n.classList].find((c) => ['online','deploying','failed','unknown'].includes(c))).sort().join()`)) === 'deploying,failed,online,unknown');
+    check('Volet : les statuts sont écrits en mots', !!text && /En ligne/.test(text) && /En déploiement/.test(text) && /Dernier déploiement échoué/.test(text), text);
+    const low = (text || '').toLowerCase(); // les titres sont mis en capitales par le style
+    check('Volet : « en cours de déploiement » est une section en tête', low.indexOf('en cours de déploiement') >= 0 && low.indexOf('en cours de déploiement') < low.indexOf('alpha') && low.indexOf('api-3') < low.indexOf('alpha'), text);
+    check('Volet : la hiérarchie projet › environnement suit celle du fournisseur', low.indexOf('alpha') < low.indexOf('production', low.indexOf('alpha')) && low.indexOf('production', low.indexOf('alpha')) < low.indexOf('staging'), text);
+    check('Volet : chaque statut a une forme en plus de la couleur', (await panel(`[...document.querySelectorAll('.srow .sd')].map((n) => [...n.classList].find((c) => ['online','deploying','failed','unknown'].includes(c))).sort().join()`)) === 'deploying,failed,online');
 
-    // Vitrine : le volet ne montre ni nom d'app ni projet hors du client affiché
+    // Un clic sur une app ouvre sa page chez le fournisseur : l'adresse vient du noyau, pas de la page du volet.
+    const before = state.tabs.size;
+    const id = tabs.snapshot().servers.items[0].id;
+    await flyout._act('servers-open', [id]);
+    check('Volet : un clic ouvre la page du fournisseur dans un onglet', state.tabs.size === before + 1 && [...state.tabs.values()].some((t) => /^https:\/\/railway\.com\/project\//.test(t.url || '')));
+    await flyout._act('servers-open', ['inconnu.s0']);
+    check('Volet : un identifiant inconnu n\'ouvre rien', state.tabs.size === before + 1);
+    for (const t of [...state.tabs.values()].filter((x) => /^https:\/\/railway\.com\//.test(x.url || ''))) await tabs.closeTab(t.id);
+
+    // Vitrine : le volet ne montre aucun nom
     state.vitrine = true; await tabs.switchSpace('globex');
+    await flyout.open('servers', { x: 800, right: 840 });
     const masked = await until(async () => { const t = await panel(`document.getElementById('panel').innerText`); return /App masquée/.test(t) ? t : null; }, 4000, 100);
-    check('Volet en vitrine : « App masquée » à la place des noms', !!masked && !/api|site|worker|cron|Projet \d/.test(masked.replace(/Actualiser|Gérer les serveurs/g, '')), masked);
+    check('Volet en vitrine : « App masquée » à la place des noms', !!masked && !/api-|Alpha|Beta|Espace démo|production|staging/.test(masked.replace(/Actualiser|Gérer les serveurs/g, '')), masked);
+    const sizeInVitrine = state.tabs.size;
+    await flyout._act('servers-open', [tabs.snapshot().servers.items[0].id]);
+    check('Volet en vitrine : un clic n\'ouvre pas la page du fournisseur (elle montrerait les noms)', state.tabs.size === sizeInVitrine);
     state.vitrine = false; await tabs.switchSpace('acme');
-    await until(async () => (/\bapi\b/.test(await panel(`document.getElementById('panel').innerText`))) || null, 4000, 100);
-
-    // Beaucoup d'apps : la liste défile, le volet ne dépasse pas la fenêtre
-    for (let i = 10; i < 70; i++) await admin['servers.observe'](mk(i, `app ${i}`));
-    await admin['servers.refresh']({});
-    await admin['servers.refresh']({});
-    await until(async () => (await panel(`document.querySelectorAll('.srow').length`)) >= 60 || null, 4000, 100);
-    await wait(150);
-    const scroll = await panel(`(() => { const l = document.querySelector('.srv-list'); return { sh: l.scrollHeight, ch: l.clientHeight, ov: getComputedStyle(l).overflowY }; })()`);
-    check('Volet : 64 apps, la liste défile', scroll.sh > scroll.ch && /auto|scroll/.test(scroll.ov), scroll);
-    check('Volet : le volet reste dans la fenêtre', flyout._view().getBounds().y + flyout._view().getBounds().height <= state.win.getContentBounds().height, flyout._view().getBounds());
-    await panel(`document.querySelector('.srv-list').scrollTop = 120`);
-    await admin['servers.refresh']({});
-    await wait(200);
-    check('Volet : un nouveau relevé garde la position de défilement', (await panel(`document.querySelector('.srv-list').scrollTop`)) === 120);
+    await flyout.open('servers', { x: 800, right: 840 }); // le clic ci-dessus a refermé le volet
+    await until(async () => (/api-1/.test(await panel(`document.getElementById('panel').innerText`))) || null, 4000, 100);
     check('Volet : le geste Actualiser est autorisé et laisse le volet ouvert', (await flyout._act('servers-refresh', []), flyout.isOpen()));
     flyout.close();
 
-    // Vide : message et accès aux Réglages (même quand la page Réglages n'est pas encore ouverte)
-    for (const it of tabs.snapshot().servers.items) await admin['servers.unobserve']({ id: it.id });
+    // Sans jeton : message et accès aux Réglages (même quand la page Réglages n'est pas encore ouverte)
+    await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: null });
     for (const t of [...state.tabs.values()].filter((x) => x.internal === 'settings')) await tabs.closeTab(t.id);
     await flyout.open('servers', { x: 800, right: 840 });
-    const empty = await until(async () => { const t = await panel(`document.getElementById('panel').innerText`); return /Aucune app observée/.test(t) ? t : null; }, 4000, 100);
-    check('Volet vide : il dit comment ajouter une app', !!empty);
+    const empty = await until(async () => { const t = await panel(`document.getElementById('panel').innerText`); return /Aucun jeton enregistré/.test(t) ? t : null; }, 4000, 100);
+    check('Volet vide : il dit comment commencer', !!empty, await panel(`document.getElementById('panel').innerText`));
     await flyout._act('open-settings', ['servers']);
     const tab = await until(() => [...state.tabs.values()].find((t) => t.internal === 'settings') || null, 4000, 100);
     await loaded(tab);
     check('Réglages ouverts depuis le volet : directement sur « Serveurs »', !!(await until(async () => ((await ev(tab, `document.querySelector('#content h1')?.textContent`).catch(() => null)) === 'Serveurs' ? 1 : null), 5000, 150)));
     await tabs.closeTab(tab.id);
-    await admin['servers.setSecret']({ provider: 'demo', key: 'token', value: null });
     check('Icône des serveurs : cachée de nouveau sans jeton', !!(await until(async () => (await bar(`document.getElementById('servers').hidden`)) || null, 4000, 100)));
     servers.stop();
   });
