@@ -6,6 +6,8 @@ module.exports = {
   permission: null,
   events: ['onClicked'],
   methods: {
+    async setPopup(ctx, d = {}) { require('../popup').setPopup(ctx.extId, d.popup); },
+    async getPopup(ctx) { return require('../popup').pathFor(ctx.extId) || ''; },
     async openPopup(ctx) {
       const ok = await require('../popup').toggle(ctx.extId, 0);
       if (!ok) throw new Error('Aucun popup à ouvrir pour cette extension');
