@@ -1283,7 +1283,7 @@ async function run(core) {
     state.extBase = savedBase;
     check('Mise à jour de l\'extension de test', updated.some((u) => u.id === x.id && u.from === '1.0.0' && u.to === '2.0.0'), updated);
     const boot = await until(async () => { try { const s = await x.startup('acme'); return s.length ? s : null; } catch { return null; } }, 20000, 400);
-    check('runtime.onInstalled({reason: "update", previousVersion: "1.0.0"}) après mise à jour, sans onStartup', boot?.some((e) => e.name === 'runtime.onInstalled' && e.details.reason === 'update' && e.details.previousVersion === '1.0.0') && !boot.some((e) => e.name === 'runtime.onStartup'), boot);
+    check('runtime.onInstalled({reason: "update", previousVersion: "1.0.0"}) après mise à jour, sans onStartup', boot?.some((e) => e.name === 'runtime.onInstalled' && e.details.reason === 'update' && e.details.previousVersion === '1.0.0') && !boot.some((e) => e.name === 'runtime.onStartup'), boot || { running: Object.values(sessions.getSession('acme').ses.serviceWorkers.getAllRunning()).map((w) => w.scope), conns: require('../src/extensions/bridge').connections().filter((c) => c.extId === x.id).map((c) => c.kind) });
   });
 
   await section('Pont d\'API : messagerie native', async () => {

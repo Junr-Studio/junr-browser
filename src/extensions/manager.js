@@ -116,14 +116,28 @@ async function unloadEverywhere(id) {
   }
 }
 
+// Retirer puis recharger une extension (mise à jour) arrête l'ancien service worker en tâche de fond : si le nouveau démarre pendant
+// cet arrêt, Chromium l'abandonne et rien ne le relance (ni onInstalled, ni écouteurs, jusqu'au prochain événement). On vérifie donc
+// qu'il tourne et, sinon, on le démarre.
+async function ensureBackground(ses, id) {
+  for (let i = 0; i < 4; i++) {
+    if (await backgroundRuns(ses, id, 1500)) return true;
+    try { await ses.serviceWorkers.startWorkerForScope(`chrome-extension://${id}/`); }
+    catch { /* l'ancien worker n'est pas encore arrêté : on revérifie au tour suivant */ }
+  }
+  return false;
+}
+
 async function loadEverywhere(rec) {
   await unloadEverywhere(rec.id);
   require('./bridge').invalidate(rec.id);
   let error = null;
   for (const s of allSessions()) {
     await s.ready;
-    try { s.loaded.set(rec.id, await loadOne(s.ses, extPath(rec), { installed: true })); }
-    catch (e) { error = e.message; }
+    try {
+      s.loaded.set(rec.id, await loadOne(s.ses, extPath(rec), { installed: true }));
+      if (readManifest(extPath(rec)).background?.service_worker) await ensureBackground(s.ses, rec.id);
+    } catch (e) { error = e.message; }
   }
   if (error) rec.loadError = error; else delete rec.loadError;
   state.store.save();
