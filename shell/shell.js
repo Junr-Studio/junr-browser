@@ -176,6 +176,7 @@ hover($('avatar'), 'clients');
 hover($('groupchip'), 'clients');
 hover($('extmenu'), 'extensions');
 
+$('settingsbtn').onclick = () => window.junr.openSettings();
 $('newtab').onclick = () => window.junr.newTab();
 $('fill').onclick = () => window.junr.fillPassword();
 let typingTimer = null;

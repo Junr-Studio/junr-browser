@@ -155,6 +155,7 @@ function attachSession(ses, spaceId) {
   ses.registerPreloadScript({ type: 'service-worker', filePath: PRELOAD });
   ses.registerPreloadScript({ type: 'frame', filePath: PRELOAD });
   ses.registerPreloadScript({ type: 'frame', filePath: USERSCRIPTS_PRELOAD });
+  require('../webstore').attachSession(ses);
   for (const mod of Object.values(load())) mod.onSession?.(ses, spaceId, { emit });
   const byVersion = new Map();
   ses.serviceWorkers.on('running-status-changed', ({ versionId, runningStatus }) => {

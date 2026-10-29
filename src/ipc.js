@@ -143,6 +143,7 @@ const summary = (o) => ({ statuses: o.statuses, expiresAt: o.expiresAt, cookies:
 
 function register() {
   flyout.register();
+  require('./extensions/webstore').register({ install: (id) => extManager.install(id), notify: (text, ms) => tabs.notify(text, ms) });
   shellHandle('switch-space', (id) => tabs.switchSpace(id));
   shellHandle('select-tab', (id) => tabs.activateTab(id));
   shellHandle('close-tab', (id) => tabs.closeTab(id));

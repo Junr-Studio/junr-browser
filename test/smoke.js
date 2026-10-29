@@ -198,6 +198,15 @@ async function run(core) {
     flyout.close();
   });
 
+  await section('Installation depuis le Chrome Web Store', async () => {
+    const store = require('../src/extensions/webstore');
+    const id = 'didegimhafipceonhjepacocaffmoppf';
+    check('Identifiant lu dans l\'adresse d\'une extension', store.idOf(`https://chromewebstore.google.com/detail/passbolt/${id}?hl=fr`) === id);
+    check('Ancienne adresse chrome.google.com reconnue', store.idOf(`https://chrome.google.com/webstore/detail/${id}`) === id);
+    check('Pas d\'identifiant hors page d\'extension', store.idOf('https://chromewebstore.google.com/category/extensions') === null);
+    check('Un faux domaine n\'est pas le Store', !store.isStoreUrl(`https://chromewebstore.google.com.exemple.fr/detail/x/${id}`) && !store.isStoreUrl(`http://chromewebstore.google.com/detail/x/${id}`));
+  });
+
   await section('Sécurité des vues', async () => {
     await tabs.switchSpace('acme');
     const views = [state.shell, ...[...state.tabs.values()].filter((t) => t.view).map((t) => t.view)];
