@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "surfaces": [
+    {
+      "dialect": "web",
+      "paths": [
+        "shell/**/*.html",
+        "shell/**/*.css"
+      ]
+    }
+  ],
+  "copyPaths": [],
+  "exempt": [
+    "test/**",
+    "scripts/**"
+  ],
+  "claims": [],
+  "brandExceptions": [],
+  "styleLock": "design/style-lock.md",
+  "decisionsLog": "design/design-decisions.jsonl",
+  "referenceBoard": "design/reference-board.md",
+  "attendance": [
+    {
+      "skill": "junr-art-direction:design-styles",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "**/style-lock.md"
+        ]
+      },
+      "why": "Un style se choisit dans le catalogue, pas de mémoire : écrit sans fiche, un style-lock reproduit le rendu par défaut du modèle. La règle ne mord qu'en écrivant le style-lock, donc une fois par projet."
+    },
+    {
+      "skill": "junr-art-direction:direction-choice",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "**/style-lock.md",
+          "**/design-decisions.jsonl"
+        ]
+      },
+      "why": "Une décision de direction non tracée se rouvre à chaque session, et « en attente » ne vaut jamais approbation. Le verrou et le journal s'écrivent selon le gabarit, ou ils ne verrouillent rien."
+    },
+    {
+      "skill": "junr-art-direction:direction-references",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "**/reference-board.md"
+        ]
+      },
+      "why": "Une planche de références recopie des pixels si on ne sait pas ce qu'on en extrait. On prend l'ADN, et chaque valeur relevée dit si elle est mesurée, déduite ou supposée."
+    },
+    {
+      "skill": "junr-art-direction:visual-slop",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "shell/**/*.html",
+          "shell/**/*.css"
+        ]
+      },
+      "unless": {
+        "paths": [
+          "**/*.test.*",
+          "**/*.spec.*",
+          "**/*.stories.*",
+          "**/*_test.dart"
+        ]
+      },
+      "why": "Le gate voit la mécanique d'un marqueur, pas si ce motif est un réflexe ou un choix. Ce jugement est dans le skill, et il doit être en contexte avant d'écrire une surface."
+    },
+    {
+      "skill": "junr-art-direction:originality-audit",
+      "when": {
+        "tools": [
+          "Bash"
+        ],
+        "command": "originality-inventory\\.py"
+      },
+      "why": "Un inventaire de recouvrements ne dit rien sans la grille : l'absence de preuve ne vaut jamais un succès, et recolorer ne corrige pas une identité copiée."
+    },
+    {
+      "skill": "junr-art-direction:originality-audit",
+      "when": {
+        "tools": [
+          "Write",
+          "Edit"
+        ],
+        "paths": [
+          "**/originality-report.md"
+        ]
+      },
+      "why": "Un rapport d'originalité sans la grille transforme l'absence de preuve en succès. Les verdicts et la triangulation sont dans le skill."
+    }
+  ],
+  "attendanceVersion": 1
+}
