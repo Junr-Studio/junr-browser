@@ -65,7 +65,11 @@ jobs:
           [ "v$(node -p "require('./package.json').version")" = "$TAG" ] || { echo "package.json ne porte pas la version $TAG"; exit 1; }
       - run: npm ci
       - run: npm run check:electron -- --vuln-only
+      # Mêmes garde-fous que ci.yml : sans eux, un blocage du runner fige l'étape jusqu'au délai du job, et un aléa fait échouer la release.
       - run: npm test
+        env:
+          JUNR_TEST_TIMEOUT_MIN: 5
+          JUNR_TEST_ATTEMPTS: 3
       # electron-builder envoie l'installeur et le .blockmap en parallèle, et chacun crée la Release s'il ne la trouve pas :
       # on obtenait deux Releases pour un même tag. Elle existe donc avant l'envoi.
       - name: Créer la pré-version
