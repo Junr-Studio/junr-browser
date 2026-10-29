@@ -1,6 +1,6 @@
 {
   "name": "junr-browser",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Navigateur multi-clients Junr : espaces étanches, outils communs, extensions du Web Store, mise en veille, partage d'espace",
   "author": "Junr Studio",
   "homepage": "https://github.com/Junr-Studio/junr-browser",
@@ -40,7 +40,8 @@
       "package.json",
       "src/**/*",
       "shell/**/*",
-      "extensions/**/*","assets/icon.png",
+      "extensions/**/*",
+      "assets/icon.png",
       "!extensions/junr-demo/**",
       "!**/*.md",
       "!**/*.map"
