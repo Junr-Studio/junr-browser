@@ -573,7 +573,9 @@ async function run(core) {
     check('Une erreur réseau n\'annule pas une mise à jour déjà prête', state.update.state === 'ready' && state.update.error === 'réseau coupé');
 
     const pub = await require('../src/ipc').admin['update.get']();
-    check('Réglages : version installée, canal, source', pub.version === pkg.version && pub.channel === 'stable' && /github\.com\//.test(pub.source) && pub.state === 'ready', pub);
+    check('Réglages : version installée, canal, source', pub.version === pkg.version && pub.channel === 'stable' && pub.source === 'github.com/Junr-Studio/junr-browser' && pub.state === 'ready', pub);
+    const publish = pkg.build.publish[0];
+    check('La source de mise à jour reste celle de build.publish', pub.source === `github.com/${publish.owner}/${publish.repo}`, publish);
 
     await updater.setChannel('beta');
     check('Canal bêta : les pré-versions sont proposées', fake.allowPrerelease === true && state.store.data.settings.updateChannel === 'beta');

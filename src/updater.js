@@ -9,6 +9,7 @@ const { app } = require('electron');
 const { state } = require('./state');
 
 const CHANNELS = ['stable', 'beta'];
+const GITHUB = { owner: 'Junr-Studio', repo: 'junr-browser' }; // mêmes valeurs que build.publish dans package.json
 const FIRST_CHECK_MS = 20 * 1000;
 const CHECK_EVERY_MS = 4 * 3600 * 1000;
 
@@ -36,8 +37,8 @@ function fileLogger() {
 /* ---------- Source des versions ---------- */
 function feedOptions() {
   if (process.env.JUNR_UPDATE_URL) return { provider: 'generic', url: process.env.JUNR_UPDATE_URL }; // essais locaux ou serveur maison
-  const p = (require('../package.json').build?.publish || [])[0] || {};
-  return { provider: 'github', owner: p.owner, repo: p.repo };
+  // En dur : electron-builder retire la clé « build » du package.json embarqué, on ne peut donc pas y relire `build.publish`.
+  return { provider: 'github', owner: GITHUB.owner, repo: GITHUB.repo };
 }
 
 async function configure() {
