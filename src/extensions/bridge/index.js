@@ -13,6 +13,7 @@ const path = require('node:path');
 const { ipcMain } = require('electron');
 const { state } = require('../../state');
 const { matchPattern, isHostPattern } = require('./match');
+const { bindWorkerCalls } = require('./worker-calls');
 
 const PRELOAD = path.join(__dirname, 'preload.js');
 const SHIM_SOURCE = path.join(__dirname, '..', 'sw-shim.js');
@@ -173,7 +174,7 @@ function attachSession(ses, spaceId) {
     const conn = addConn({ kind: 'sw', extId: m[1], spaceId, ses, worker, send: (msg) => { if (!worker.isDestroyed()) worker.send('junr:event', msg); } });
     byVersion.set(versionId, conn);
     // Le gestionnaire doit exister avant l'exécution du script : on l'enregistre dès l'état « starting ».
-    worker.ipc.handle('junr:call', (e, p, a) => handleCall(conn, p, a));
+    bindWorkerCalls(worker, conn, handleCall);
   });
 }
 
