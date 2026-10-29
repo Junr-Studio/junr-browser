@@ -2,7 +2,7 @@
 // Modèle d'onglets et de fenêtre tel que le voient les extensions (objets chrome.tabs.Tab et chrome.windows.Window).
 // L'identifiant d'onglet est celui de la vue web (webContents.id), comme dans l'API native d'Electron : les appels natifs
 // (tabs.query, tabs.sendMessage, scripting.executeScript) et les appels pontés désignent donc le même onglet.
-const { state } = require('../../state');
+const { state, HOME_URL } = require('../../state');
 
 const WINDOW_ID = 0; // Electron numérote l'unique fenêtre 0 dans tabs.query : on reste cohérent
 
@@ -92,7 +92,7 @@ module.exports = { isActive, WINDOW_ID, wcOf, tabsOfSpace, tabByWcId, resolveTab
 // Ouvre un onglet pour une extension. Un client en arrière-plan ne vole jamais l'affichage : l'onglet est chargé sans être activé.
 async function createTab(ctx, { url, active = true, openerTabId } = {}) {
   const tabs = require('../../tabs');
-  const target = checkOpenableUrl(ctx, url || 'https://duckduckgo.com');
+  const target = checkOpenableUrl(ctx, url || HOME_URL);
   const t = tabs.addTab({ spaceId: ctx.spaceId, url: target, title: target });
   if (openerTabId !== undefined) t.openerWcId = openerTabId;
   const foreground = active && (ctx.spaceId === 'global' || ctx.spaceId === state.activeSpace);

@@ -32,6 +32,6 @@
   ],
   "globalTools": [
     { "name": "Diagnostic commun", "url": "{diag}?global" },
-    { "name": "DuckDuckGo", "url": "https://duckduckgo.com" }
+    { "name": "Google", "url": "https://www.google.com" }
   ]
 }

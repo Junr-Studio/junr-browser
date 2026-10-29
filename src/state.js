@@ -30,4 +30,6 @@ module.exports = {
   TOPBAR_H: 46,         // une seule barre en haut, qui sert aussi de barre de titre
   FRAME_W: 3,           // liseré de la couleur du client en haut de la barre (identité du lieu)
   FRAME_CRITICAL_W: 6,  // liseré d'un client marqué « sensible »
+  HOME_URL: 'https://www.google.com',                  // page d'un nouvel onglet
+  SEARCH_URL: 'https://www.google.com/search?q=',      // moteur de recherche : barre d'adresse, menu contextuel, chrome.search
 };
